@@ -1,101 +1,78 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
 lib/
-lib64/
-parts/
-sdist/
-var/
-*.egg-info/
-.installed.cfg
-*.egg
-
 # PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.coverage
-.cache
-nosetests.xml
-coverage.xml
-
-# Translations
-*.mo
-*.pot
-
 # Django stuff:
-*.log
-
-# Sphinx documentation
-docs/_build/
-
 # PyBuilder
-target/
-
-# =========================
-# Operating System Files
-# =========================
-
-# OSX
-# =========================
-
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Thumbnails
-._*
-
-# Files that might appear on external disk
-.Spotlight-V100
-.Trashes
-
-# Directories potentially created on remote AFP share
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
 .apdisk
-
-# Windows
-# =========================
-
-# Windows image file caches
+# OSX
+*.egg
 Thumbs.db
-ehthumbs.db
-
 # Folder config file
-Desktop.ini
-
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
-
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+parts/
 # Windows Installer files
+# Files that might appear on external disk
+*.log
+coverage.xml
+.LSOverride
+dist/
+# Byte-compiled / optimized / DLL files
+# Windows image file caches
+.DS_Store
+# =========================
+.installed.cfg
+*.manifest
+nosetests.xml
+docs/_build/
+*.pot
+.Python
+#  Usually these files are written by a python script from a template
+*.spec
+.cache
+.AppleDB
+# Distribution / packaging
+# Thumbnails
+Temporary Items
+downloads/
 *.cab
+sdist/
+$RECYCLE.BIN/
+*.py[cod]
+build/
+.coverage
+*.egg-info/
+.AppleDesktop
+# C extensions
+pip-delete-this-directory.txt
+# Sphinx documentation
+develop-eggs/
+htmlcov/
+# Translations
+pip-log.txt
+# Installer logs
+# Directories potentially created on remote AFP share
+target/
+# Unit test / coverage reports
+lib64/
+results.csv
+Network Trash Folder
+eggs/
+.Trashes
+*.so
+__pycache__/
 *.msi
-*.msm
-*.msp
-
-# Windows shortcuts
+.tox/
 *.lnk
+# Windows
+Desktop.ini
+.Spotlight-V100
+*.msm
+.AppleDouble
+env/
+._*
+var/
+# Windows shortcuts
+# Operating System Files
+*.msp
+ehthumbs.db
+*.mo
+# Recycle Bin used on file shares
