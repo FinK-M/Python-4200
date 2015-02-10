@@ -36,10 +36,26 @@
 	"buffers":
 	[
 		{
+			"file": "Python_4200.py",
+			"settings":
+			{
+				"buffer_size": 3641,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "results.csv",
+			"settings":
+			{
+				"buffer_size": 2149,
+				"line_ending": "Windows"
+			}
+		},
+		{
 			"file": "commands_fsweep.txt",
 			"settings":
 			{
-				"buffer_size": 198,
+				"buffer_size": 186,
 				"line_ending": "Windows"
 			}
 		}
@@ -50,6 +66,10 @@
 		"height": 392.0,
 		"selected_items":
 		[
+			[
+				"rem",
+				"Package Control: Remove Package"
+			],
 			[
 				"git",
 				"Git: Push"
@@ -88,6 +108,7 @@
 	],
 	"file_history":
 	[
+		"/C/Users/APD-Lab/AppData/Roaming/Sublime Text 3/Packages/User/Default (Windows).sublime-keymap",
 		"/C/Users/APD-Lab/AppData/Roaming/Sublime Text 3/Packages/Git/Git.sublime-settings",
 		"/C/Users/APD-Lab/AppData/Roaming/Sublime Text 3/Packages/User/SideBarGit.sublime-settings",
 		"/C/Users/APD-Lab/AppData/Roaming/Sublime Text 3/Packages/SideBarGit/SideBarGit.sublime-settings",
@@ -133,24 +154,82 @@
 	"groups":
 	[
 		{
-			"selected": 0,
+			"selected": 2,
 			"sheets":
 			[
 				{
 					"buffer": 0,
-					"file": "commands_fsweep.txt",
-					"semi_transient": true,
+					"file": "Python_4200.py",
+					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 198,
+						"buffer_size": 3641,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								198,
-								198
+								138,
+								138
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "results.csv",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2149,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								123,
+								123
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "commands_fsweep.txt",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 186,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								62,
+								62
 							]
 						],
 						"settings":
