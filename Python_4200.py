@@ -55,12 +55,12 @@ def csv_writer(prim, sec, ter):
     """
     ---------------------------------------------------------------------------
     FUNCTION: csv_writer
-    INPUTS: values (str)
-    RETURNS: prim, sec (list float)
+    INPUTS: prim, sec, ter (float list)
+    RETURNS: nothing
     DEPENDENCIES: csv
     ---------------------------------------------------------------------------
-    Takes two arrays of values and writes them to two columns in a csv file
-    called "results.csv". The columns have headers "Input" and "Output"
+    Takes three arrays of values and writes them to two columns in a csv file
+    called "results.csv". The columns have headers "X1", "Y1", and "Y2"
     ---------------------------------------------------------------------------
     """
     rows = zip(ter, prim, sec)
@@ -71,22 +71,56 @@ def csv_writer(prim, sec, ter):
             reswrite.writerow(row)
 
 
-def dual_plot(x, x_label, y1, y1_label, y2, y2_label, x_min, x_max):
+def dual_plot(x, x_label, y1, y1_label, y2, y2_label, x_min, x_max, log):
+    """
+    ---------------------------------------------------------------------------
+    FUNCTION: dual_plot
+    INPUTS: x, y1, y2 (float array) - x_min, x_max (int)
+            x_label, y1_label, y2_label (str) - log (Boolean)
+    RETURNS: nothing
+    DEPENDENCIES: matplotlib.pyplot
+    ---------------------------------------------------------------------------
+    Takes three arrays of floats and their respective names. y1 and y2 are
+    plotted against x over the range x_min to x_max. Setting log to true
+    results in a semilogx plot whereas false is a simple linear plot.
+    ---------------------------------------------------------------------------
+    """
     fig, ax1 = plt.subplots()
-    ax1.plot(x, y1, 'b')
+    if log:
+        ax1.semilogx(x, y1, 'b')
+    else:
+        ax1.plot(x, y1, 'b')
     ax1.set_xlabel(x_label)
     ax1.set_ylabel(y1_label, color='b')
     for tl in ax1.get_yticklabels():
         tl.set_color('b')
 
     ax2 = ax1.twinx()
-    ax2.plot(x, y2, 'r')
+    if log:
+        ax2.semilogx(x, y2, 'r')
+    else:
+        ax2.plot(x, y2, 'r')
     ax2.set_ylabel(y2_label, color='r')
     for tl in ax2.get_yticklabels():
         tl.set_color('r')
     plt.xlim([x_min, x_max])
     plt.grid(True)
-    plt.show()
+    plt.show(block=False)
+
+
+def test_type():
+    print("Test 0: CV sweep")
+    print("Test 1: CF sweep")
+    while True:
+        try:
+            t_type = int(input("Please select a test: "))
+            if t_type != 0 and t_type != 1:
+                raise ValueError("Please enter either 1 or 0")
+            else:
+                return t_type
+        except ValueError:
+            print("Invalid selection")
+
 
 proceed = None
 while not proceed:
@@ -99,9 +133,9 @@ while not proceed:
 
     # pass resource manager to device selection prompt
     # comment to set device without prompt
-    addr = select_device(rm)
+    # addr = select_device(rm)
 
-    # addr = 'GPIB0::17::INSTR'
+    addr = 'GPIB0::17::INSTR'
     # uncomment to set device without prompt
 
     # confirm address being used
@@ -118,6 +152,7 @@ while not proceed:
     # specific to the Keithley 4200-SCS. Others may use '*IDN?'
     print("Instrument IDs as", instr.query('ID'))
 
+    ttype = test_type()
     # clear the visa resource buffers
     instr.clear()
 
@@ -147,9 +182,14 @@ while not proceed:
     # clear the buffer
     instr.write('BC')
 
+    if not ttype:
+        cfile = 'commands_vsweep.txt'
+    else:
+        cfile = 'commands_fsweep.txt'
     # read commands file into a list
-    with open('commands_fsweep.txt', 'r') as f:
-        commands = f.readlines()
+    with open(cfile, 'r') as coms:
+        commands = coms.readlines()
+        coms.close()
 
     # parse list and send each item in turn to the instrument
     for command in commands:
@@ -162,27 +202,34 @@ while not proceed:
     instr.write(':CVU:DATA:Z?')
     values = str(instr.read_raw()).replace("b'", "").rstrip("'")
     values = values[:len(values) - 5]
-
-    instr.write(':CVU:DATA:VOLT?')
-    volt = str(instr.read_raw()).replace("b'", "").rstrip("'")
-    volt = volt[:len(volt)-5].split(",")
-    volts = [float(v) for v in volt]
-
     prim, sec = CV_output_san(values)
 
-    prim = prim
-    sec = sec
-    volts = volts
-    total = [prim[i]*sec[i] for i in range(len(prim))]
+    if not ttype:
+        instr.write(':CVU:DATA:VOLT?')
+        volt = str(instr.read_raw()).replace("b'", "").rstrip("'")
+        volt = volt[:len(volt)-5].split(",")
+        volts = [float(v) for v in volt]
+        csv_writer(prim, sec, volts)
+        dual_plot(volts, "Volts (V)", prim, "Capacitance (F)",
+                  sec, "Resistance", -5, 5, False)
+    else:
+        instr.write(':CVU:DATA:FREQ?')
+        freq = str(instr.read_raw()).replace("b'", "").rstrip("'")
+        freq = freq[:len(freq)-5].split(",")
+        freqs = [float(f) for f in freq]
+        csv_writer(prim, sec, freqs)
+        dual_plot(freqs, "Frequency (Hz)", prim, "Capacitance (F)",
+                  sec, "Resistance", 1000, 1000000, True)
 
-    csv_writer(prim, sec, volt)
-    #plt.plot(volts, total)
-
-    dual_plot(volts, "Voltage (V)", prim, "Capacitance (F)",
-              sec, "Resistance", -5, 5)
-    """
-    print("Run again? (Y/N)")
-    if str(input("Run again? (Y/N): ")) == "N" or "n":
-        break
-    """
-    break
+    check = True
+    while check:
+        try:
+            c = str(input("Run again? (Y/N): ")).lower()
+            if c == "n":
+                raise SystemExit(0)
+            elif c == "y":
+                check = False
+            else:
+                raise ValueError()
+        except ValueError:
+            print("Please make a valid selection")
