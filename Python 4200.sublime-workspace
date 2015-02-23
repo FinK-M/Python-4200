@@ -4,6 +4,10 @@
 		"selected_items":
 		[
 			[
+				"q",
+				"query_5302	(function)"
+			],
+			[
 				"cl",
 				"close	(function)"
 			],
@@ -91,7 +95,15 @@
 			"file": "Python_4200.py",
 			"settings":
 			{
-				"buffer_size": 7974,
+				"buffer_size": 8479,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "Python_5302.py",
+			"settings":
+			{
+				"buffer_size": 1957,
 				"line_ending": "Windows"
 			}
 		}
@@ -144,6 +156,8 @@
 	],
 	"file_history":
 	[
+		"/C/Users/APD-Lab/AppData/Roaming/Rainmeter/Rainmeter.ini",
+		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/.gitignore",
 		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/name",
 		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/results.csv",
 		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/commands_fsweep.txt",
@@ -153,7 +167,6 @@
 		"/C/Users/APD-Lab/AppData/Roaming/Sublime Text 3/Packages/Git/Git.sublime-settings",
 		"/C/Users/APD-Lab/AppData/Roaming/Sublime Text 3/Packages/User/SideBarGit.sublime-settings",
 		"/C/Users/APD-Lab/AppData/Roaming/Sublime Text 3/Packages/SideBarGit/SideBarGit.sublime-settings",
-		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/.gitignore",
 		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/sanitation.py",
 		"/G/sanitation.py",
 		"/C/Users/APD-Lab/Documents/Python Scripts/test.py",
@@ -199,7 +212,7 @@
 	"groups":
 	[
 		{
-			"selected": 0,
+			"selected": 1,
 			"sheets":
 			[
 				{
@@ -208,15 +221,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 7974,
+						"buffer_size": 8479,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								6920,
-								6920
+								5168,
+								5168
 							]
 						],
 						"settings":
@@ -225,8 +238,37 @@
 							"tab_size": 4,
 							"translate_tabs_to_spaces": true
 						},
-						"translation.x": -0.0,
-						"translation.y": 0.0,
+						"translation.x": 0.0,
+						"translation.y": 2160.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "Python_5302.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1957,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1164,
+								1164
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.tmLanguage",
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 405.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,

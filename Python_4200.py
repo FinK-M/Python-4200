@@ -105,10 +105,21 @@ def dual_plot(x, x_label, y1, y1_label, y2, y2_label, x_min, x_max, log):
         tl.set_color('r')
     plt.xlim([x_min, x_max])
     plt.grid(True)
-    plt.show(block = False)
+    plt.show(block=False)
 
 
 def test_type():
+    """
+    ---------------------------------------------------------------------------
+    FUNCTION: test_type
+    INPUTS: none
+    RETURNS: t_type (int)
+    DEPENDENCIES: none
+    ---------------------------------------------------------------------------
+    Queries the user on which test they wish to perform, selecting an incorrect
+    value results in an error message and a prompt to choose again.
+    ---------------------------------------------------------------------------
+    """
     print("Test 0: CV sweep")
     print("Test 1: CF sweep")
     print("Test 2: CT sweep")
