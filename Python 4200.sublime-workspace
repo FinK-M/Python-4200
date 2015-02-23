@@ -4,12 +4,36 @@
 		"selected_items":
 		[
 			[
-				"gr",
-				"grid	(function)"
+				"cl",
+				"close	(function)"
+			],
+			[
+				"sys",
+				"SystemExit	(class)"
+			],
+			[
+				"t",
+				"t_type	(statement)"
+			],
+			[
+				"value",
+				"ValueError	(class)"
+			],
+			[
+				"y1",
+				"y1_label	(param)"
 			],
 			[
 				"x_",
+				"x_label	(param)"
+			],
+			[
+				"X_",
 				"x_max	(param)"
+			],
+			[
+				"gr",
+				"grid	(function)"
 			],
 			[
 				"x",
@@ -18,10 +42,6 @@
 			[
 				"y2",
 				"y2_label	(param)"
-			],
-			[
-				"y1",
-				"y1	(param)"
 			],
 			[
 				"pr",
@@ -68,18 +88,10 @@
 	"buffers":
 	[
 		{
-			"file": "results.csv",
+			"file": "Python_4200.py",
 			"settings":
 			{
-				"buffer_size": 867,
-				"line_ending": "Windows"
-			}
-		},
-		{
-			"file": "commands_fsweep.txt",
-			"settings":
-			{
-				"buffer_size": 204,
+				"buffer_size": 7974,
 				"line_ending": "Windows"
 			}
 		}
@@ -132,6 +144,9 @@
 	],
 	"file_history":
 	[
+		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/name",
+		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/results.csv",
+		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/commands_fsweep.txt",
 		"/C/Program Files/National Instruments/LabVIEW 2014/instr.lib/dir.mnu",
 		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/Python_4200.py",
 		"/C/Users/APD-Lab/AppData/Roaming/Sublime Text 3/Packages/User/Default (Windows).sublime-keymap",
@@ -163,6 +178,8 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"times",
+			"time",
 			"volt",
 			"volt "
 		],
@@ -187,58 +204,32 @@
 			[
 				{
 					"buffer": 0,
-					"file": "results.csv",
+					"file": "Python_4200.py",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 867,
+						"buffer_size": 7974,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								0,
-								0
+								6920,
+								6920
 							]
 						],
 						"settings":
 						{
-							"syntax": "Packages/Text/Plain text.tmLanguage"
+							"syntax": "Packages/Python/Python.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
 						},
-						"translation.x": 0.0,
+						"translation.x": -0.0,
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "commands_fsweep.txt",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 204,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								62,
-								62
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Text/Plain text.tmLanguage"
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 1,
 					"type": "text"
 				}
 			]

@@ -53,7 +53,9 @@ pip-log.txt
 target/
 # Unit test / coverage reports
 lib64/
-results.csv
+*.csv
+*.sublime-project
+*.sublime-workspace
 Network Trash Folder
 eggs/
 .Trashes

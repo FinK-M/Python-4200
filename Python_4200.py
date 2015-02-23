@@ -51,7 +51,7 @@ def select_device(rm):
     return(devices[selection])
 
 
-def csv_writer(prim, sec, ter):
+def csv_writer(prim, sec, ter, name):
     """
     ---------------------------------------------------------------------------
     FUNCTION: csv_writer
@@ -64,7 +64,7 @@ def csv_writer(prim, sec, ter):
     ---------------------------------------------------------------------------
     """
     rows = zip(ter, prim, sec)
-    with open('results.csv', 'w', newline='') as csvfile:
+    with open(name, 'w', newline='') as csvfile:
         reswrite = csv.writer(csvfile)
         reswrite.writerow(["X1", "Y1", "Y2"])
         for row in rows:
@@ -105,54 +105,55 @@ def dual_plot(x, x_label, y1, y1_label, y2, y2_label, x_min, x_max, log):
         tl.set_color('r')
     plt.xlim([x_min, x_max])
     plt.grid(True)
-    plt.show(block=False)
+    plt.show(block = False)
 
 
 def test_type():
     print("Test 0: CV sweep")
     print("Test 1: CF sweep")
+    print("Test 2: CT sweep")
     while True:
         try:
             t_type = int(input("Please select a test: "))
-            if t_type != 0 and t_type != 1:
-                raise ValueError("Please enter either 1 or 0")
+            if t_type != 0 and t_type != 1 and t_type != 2:
+                raise ValueError("Please enter 2, 1, or 0")
             else:
                 return t_type
         except ValueError:
             print("Invalid selection")
 
 
-proceed = None
-while not proceed:
-    try:
-        # create resource manager object
-        rm = visa.ResourceManager()
-    except:
-        print("Error: Cannot find visa list, please check configuration")
-        break
+try:
+    # create resource manager object
+    rm = visa.ResourceManager()
+except:
+    print("Error: Cannot find visa list, please check configuration")
+    exit()
 
-    # pass resource manager to device selection prompt
-    # comment to set device without prompt
-    # addr = select_device(rm)
+# pass resource manager to device selection prompt
+# comment to set device without prompt
+addr = select_device(rm)
 
-    addr = 'GPIB0::17::INSTR'
-    # uncomment to set device without prompt
+# addr = 'GPIB0::17::INSTR'
+# uncomment to set device without prompt
 
-    # confirm address being used
-    print("Using device at", addr)
+# confirm address being used
+print("Using device at", addr)
 
-    # open visa resource at given address
-    try:
-        instr = rm.open_resource(addr)
-    except:
-        print("Error, cannot open resource")
-        break
+# open visa resource at given address
+try:
+    instr = rm.open_resource(addr)
+except:
+    print("Error, cannot open resource")
+    exit()
 
-    # display the intrument's reported ID. Note the commant 'ID' is
-    # specific to the Keithley 4200-SCS. Others may use '*IDN?'
-    print("Instrument IDs as", instr.query('ID'))
+# display the intrument's reported ID. Note the commant 'ID' is
+# specific to the Keithley 4200-SCS. Others may use '*IDN?'
+print("Instrument IDs as", instr.query('ID'))
 
+while True:
     ttype = test_type()
+
     # clear the visa resource buffers
     instr.clear()
 
@@ -174,7 +175,7 @@ while not proceed:
         instr.wait_for_srq()
     except:
         print("Error: SRQ timeout")
-        break
+        exit()
 
     # print success
     print("Configured PMU2")
@@ -182,10 +183,12 @@ while not proceed:
     # clear the buffer
     instr.write('BC')
 
-    if not ttype:
+    if ttype == 0:
         cfile = 'commands_vsweep.txt'
-    else:
+    elif ttype == 1:
         cfile = 'commands_fsweep.txt'
+    elif ttype == 2:
+        cfile = 'commands_tsweep.txt'
     # read commands file into a list
     with open(cfile, 'r') as coms:
         commands = coms.readlines()
@@ -196,7 +199,7 @@ while not proceed:
         instr.write(command.rstrip('\n'))
 
     print("Running tests...")
-    instr.wait_for_srq()
+    instr.wait_for_srq(timeout=250000)
     print("Done!")
 
     instr.write(':CVU:DATA:Z?')
@@ -204,22 +207,31 @@ while not proceed:
     values = values[:len(values) - 5]
     prim, sec = CV_output_san(values)
 
-    if not ttype:
+    if ttype == 0:
         instr.write(':CVU:DATA:VOLT?')
         volt = str(instr.read_raw()).replace("b'", "").rstrip("'")
         volt = volt[:len(volt)-5].split(",")
         volts = [float(v) for v in volt]
-        csv_writer(prim, sec, volts)
+        csv_writer(prim, sec, volts, 'CV_results.csv')
         dual_plot(volts, "Volts (V)", prim, "Capacitance (F)",
                   sec, "Resistance", -5, 5, False)
-    else:
+    elif ttype == 1:
         instr.write(':CVU:DATA:FREQ?')
         freq = str(instr.read_raw()).replace("b'", "").rstrip("'")
         freq = freq[:len(freq)-5].split(",")
         freqs = [float(f) for f in freq]
-        csv_writer(prim, sec, freqs)
+        csv_writer(prim, sec, freqs, 'CF_results.csv')
         dual_plot(freqs, "Frequency (Hz)", prim, "Capacitance (F)",
                   sec, "Resistance", 1000, 1000000, True)
+
+    elif ttype == 2:
+        instr.write(':CVU:DATA:TSTAMP?')
+        ta = str(instr.read_raw()).replace("b'", "").rstrip("'")
+        ta = ta[:len(ta)-5].split(",")
+        tb = [float(t) for t in ta]
+        csv_writer(prim, sec, tb, 'CT_results.csv')
+        dual_plot(tb, "Time (S)", prim, "Capacitance (F)",
+                  sec, "Resistance", 0, 13, False)
 
     check = True
     while check:
