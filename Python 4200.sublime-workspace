@@ -4,6 +4,26 @@
 		"selected_items":
 		[
 			[
+				"se",
+				"select_device	(function)"
+			],
+			[
+				"pyth",
+				"Python_4200	(module)"
+			],
+			[
+				"read",
+				"read_command	(param)"
+			],
+			[
+				"read_",
+				"read_4200_x	(function)"
+			],
+			[
+				"fre",
+				"freqs	(statement)"
+			],
+			[
 				"q",
 				"query_5302	(function)"
 			],
@@ -76,14 +96,6 @@
 				"commands	(statement)"
 			],
 			[
-				"read",
-				"readline	(function)"
-			],
-			[
-				"se",
-				"selection	(statement)"
-			],
-			[
 				"res",
 				"ResourceManager	(class)"
 			]
@@ -95,7 +107,7 @@
 			"file": "Python_4200.py",
 			"settings":
 			{
-				"buffer_size": 8479,
+				"buffer_size": 9636,
 				"line_ending": "Windows"
 			}
 		},
@@ -103,7 +115,7 @@
 			"file": "Python_5302.py",
 			"settings":
 			{
-				"buffer_size": 1957,
+				"buffer_size": 1177,
 				"line_ending": "Windows"
 			}
 		}
@@ -156,6 +168,9 @@
 	],
 	"file_history":
 	[
+		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/commands_vsweep.txt",
+		"/C/Users/APD-Lab/Documents/Rainmeter/Skins/Mangotsfield/MangoRss/RSS Reader.ini",
+		"/C/Users/APD-Lab/Documents/Rainmeter/Skins/VClouds_RSS/VClouds RSS/Reader1/ReaderRSS.ini",
 		"/C/Users/APD-Lab/AppData/Roaming/Rainmeter/Rainmeter.ini",
 		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/.gitignore",
 		"/C/Users/APD-Lab/Documents/Finlay KM/Python-4200/name",
@@ -191,6 +206,12 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"tb",
+			"freqs",
+			"volts",
+			"Volts",
+			"volts",
+			"read_4200_z",
 			"times",
 			"time",
 			"volt",
@@ -212,7 +233,7 @@
 	"groups":
 	[
 		{
-			"selected": 1,
+			"selected": 0,
 			"sheets":
 			[
 				{
@@ -221,15 +242,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 8479,
+						"buffer_size": 9636,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								5168,
-								5168
+								6567,
+								6567
 							]
 						],
 						"settings":
@@ -239,10 +260,10 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 2160.0,
+						"translation.y": 315.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 1,
+					"stack_index": 0,
 					"type": "text"
 				},
 				{
@@ -251,15 +272,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 1957,
+						"buffer_size": 1177,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								1164,
-								1164
+								274,
+								274
 							]
 						],
 						"settings":
@@ -268,10 +289,10 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 405.0,
+						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 0,
+					"stack_index": 1,
 					"type": "text"
 				}
 			]
