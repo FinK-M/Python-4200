@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
-from decimal import *
+from decimal import Decimal
 import visa
 import csv
-import time
 
 
 def CV_output_san(values):
@@ -196,7 +195,7 @@ if __name__ == "__main__":
         instr = rm.open_resource(addr)
     except:
         print("Error, cannot open resource")
-        exit()
+        raise SystemExit()
 
     # display the intrument's reported ID. Note the commant 'ID' is
     # specific to the Keithley 4200-SCS. Others may use '*IDN?'
