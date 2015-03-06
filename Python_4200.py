@@ -17,9 +17,8 @@ def CV_output_san(values):
     ---------------------------------------------------------------------------
     """
     values = (values.replace(";", ",").split(","))
-    prim = [values[i] for i in range(0, len(values), 2)]
+    prim = [float(Decimal(values[i])) for i in range(0, len(values), 2)]
     sec = [float(values[i]) for i in range(1, len(values), 2)]
-    prim = [float(Decimal(prim[i])) for i in range(len(prim))]
     return prim, sec
 
 
@@ -56,19 +55,23 @@ def csv_writer(prim, sec, ter, name):
     ---------------------------------------------------------------------------
     FUNCTION: csv_writer
     INPUTS: prim, sec, ter (float list)
+            name (str)
     RETURNS: nothing
     DEPENDENCIES: csv
     ---------------------------------------------------------------------------
     Takes three arrays of values and writes them to two columns in a csv file
-    called "results.csv". The columns have headers "X1", "Y1", and "Y2"
+    called "name". The columns have headers "X1", "Y1", and "Y2"
     ---------------------------------------------------------------------------
     """
     rows = zip(ter, prim, sec)
-    with open(name, 'w', newline='') as csvfile:
-        reswrite = csv.writer(csvfile)
-        reswrite.writerow(["X1", "Y1", "Y2"])
-        for row in rows:
-            reswrite.writerow(row)
+    try:
+        with open(name + '.csv', 'w', newline='') as csvfile:
+            reswrite = csv.writer(csvfile)
+            reswrite.writerow(["X1", "Y1", "Y2"])
+            for row in rows:
+                reswrite.writerow(row)
+    except:
+        raise SystemExit("Could not open file to write!")
 
 
 def dual_plot(x, x_label, y1, y1_label, y2, y2_label, x_min, x_max, log):
@@ -128,9 +131,9 @@ def test_type():
     value results in an error message and a prompt to choose again.
     ---------------------------------------------------------------------------
     """
-    print("Test 0: CV sweep")
-    print("Test 1: CF sweep")
-    print("Test 2: CT sweep")
+    print("Test 0: CV sweep\n",
+          "Test 1: CF sweep\n",
+          "Test 2: CT sweep")
 
     while True:
         try:
@@ -143,7 +146,7 @@ def test_type():
             print("Invalid selection")
 
 
-def read_4200_x(read_command):
+def read_4200_x(read_command, instrument):
     """
     ---------------------------------------------------------------------------
     FUNCTION: read_4200_x
@@ -165,125 +168,57 @@ def read_4200_x(read_command):
     if read_command not in ok_commands:
         raise ValueError('Incorrect read command passed')
 
-    instr.write(read_command)
-    data = str(instr.read_raw()).replace("b'", "").rstrip("'")
+    instrument.write(read_command)
+    data = str(instrument.read_raw()).replace("b'", "").rstrip("'")
     data = data[:-5].split(",")
     x = [float(d) for d in data]
     return x
 
-
-if __name__ == "__main__":
-
+def rpm_switch(channel, mode, instrument):
+    """
+    ---------------------------------------------------------------------------
+    FUNCTION: rpm_switch
+    INPUTS: channel, mode (int)
+    RETURNS: nothing
+    DEPENDENCIES: pyvisa/visa
+    ---------------------------------------------------------------------------
+    Sends a command to the 4225 RPM modules of the 4200-SCS to set a given
+    channel to a given mode (see below).
+    0 = Pulsing
+    1 = 2 Wire CVU
+    2 = 4 Wire CVU
+    3 = SMU
+    ---------------------------------------------------------------------------
+    """
     try:
-        # create resource manager object
-        rm = visa.ResourceManager()
-    except:
-        raise RuntimeError("Cannot find visa list, please check configuration")
-
-    # pass resource manager to device selection prompt
-    # comment to set device without prompt
-    addr = select_device(rm)
-
-    # addr = 'GPIB0::17::INSTR'
-    # uncomment to set device without prompt
-
-    # confirm address being used
-    print("Using device at", addr)
-
-    # open visa resource at given address
-    try:
-        instr = rm.open_resource(addr)
-    except:
-        print("Error, cannot open resource")
-        raise SystemExit()
-
-    # display the intrument's reported ID. Note the commant 'ID' is
-    # specific to the Keithley 4200-SCS. Others may use '*IDN?'
-    print("Instrument IDs as", instr.query('ID'))
-
-    while True:
-        ttype = test_type()
-
-        # clear the visa resource buffers
-        instr.clear()
-
-        # send srq when finished with task
-        instr.write('DR1')
-        # access the user library page
-        instr.write('UL')
         # run script to switch RPM1 to CVU mode
-        instr.write('EX pmuulib kxci_rpm_switch(1,1)')
+        instrument.write('EX pmuulib kxci_rpm_switch(' + str(channel) + ',' + str(mode) + ')')
         # wait for script to complete
-        instr.wait_for_srq()
-        # print success
-        print("Configured PMU1")
+        instrument.wait_for_srq()
+        print("Configured PMU", channel)
+    except:
+        raise RuntimeError("Service Request timed out")
 
-        # run script to switch RPM2 to CVU mode
-        instr.write('EX pmuulib kxci_rpm_switch(2,1)')
-        # wait for script to complete
-        try:
-            instr.wait_for_srq()
-        except:
-            raise RuntimeError("Service Request timed out")
+def init_4200(mode, instrument):
+    # clear the visa resource buffers
+    instrument.clear()
+    # send srq when finished with task
+    instrument.write('DR1')
+    # access the user library page
+    instrument.write('UL')
 
-        # print success
-        print("Configured PMU2")
+    rpm_switch(1, mode, instrument)
+    rpm_switch(2, mode, instrument)
 
-        # clear the buffer
-        instr.write('BC')
+    # clear the buffer
+    instrument.write('BC')
 
-        if ttype == 0:
-            cfile = 'commands_vsweep.txt'
-        elif ttype == 1:
-            cfile = 'commands_fsweep.txt'
-        elif ttype == 2:
-            cfile = 'commands_tsweep.txt'
-        # read commands file into a list
-        with open(cfile, 'r') as coms:
-            commands = coms.readlines()
-            coms.close()
-
-        # parse list and send each item in turn to the instrument
-        for command in commands:
-            instr.write(command.rstrip('\n'))
-
-        print("Running tests...")
-        instr.wait_for_srq(timeout=250000)
-        print("Done!")
-
-        instr.write(':CVU:DATA:Z?')
-        values = str(instr.read_raw()).replace("b'", "").rstrip("'")
-        values = values[:-5]
-        prim, sec = CV_output_san(values)
-
-        if ttype == 0:
-            volt = read_4200_x(':CVU:DATA:VOLT?')
-            csv_writer(prim, sec, volt, 'CV_results.csv')
-            dual_plot(volt, "Volts (V)", prim, "Capacitance (F)",
-                      sec, "Resistance (Ω)", min(volt), max(volt), False)
-
-        elif ttype == 1:
-            freq = read_4200_x(':CVU:DATA:FREQ?')
-            csv_writer(prim, sec, freq, 'CF_results.csv')
-            dual_plot(freq, "Frequency (Hz)", prim, "Capacitance (F)",
-                      sec, "Resistance (Ω)", min(freq), max(freq), True)
-
-        elif ttype == 2:
-            tstamp = read_4200_x(':CVU:DATA:TSTAMP?')
-            csv_writer(prim, sec, tstamp, 'CT_results.csv')
-            dual_plot(tstamp, "Time (S)", prim, "Capacitance (F)",
-                      sec, "Resistance (Ω)", min(tstamp), max(tstamp), False)
-
-        check = True
-        while check:
-            try:
-                c = str(input("Run again? (Y/N): ")).lower()
-                if c == "n":
-                    raise SystemExit(0)
-                elif c == "y":
-                    print()
-                    check = False
-                else:
-                    raise ValueError()
-            except ValueError:
-                print("Please make a valid selection")
+# If running this library, print docstring for all functions
+if __name__ == "__main__":
+    print(CV_output_san.__doc__, '\n',
+          select_device.__doc__, '\n',
+          csv_writer.__doc__, '\n',
+          dual_plot.__doc__, '\n',
+          test_type.__doc__, '\n',
+          read_4200_x.__doc__, '\n',
+          rpm_switch.__doc__, '\n')
