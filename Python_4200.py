@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 from decimal import Decimal
-import visa
 import csv
 
 
@@ -200,25 +199,37 @@ def rpm_switch(channel, mode, instrument):
         raise RuntimeError("Service Request timed out")
 
 def init_4200(mode, instrument):
+    """
+    ---------------------------------------------------------------------------
+    FUNCTION: init_4200
+    INPUTS: mode, instrument (int)
+    RETURNS: nothing
+    DEPENDENCIES: pyvisa/visa
+    ---------------------------------------------------------------------------
+    Sets up the 4200-SCS to recieve measurement commands and respond correctly
+    when RPM modules are attached. See function above for RPM modes.
+    ---------------------------------------------------------------------------
+    """
     # clear the visa resource buffers
     instrument.clear()
     # send srq when finished with task
     instrument.write('DR1')
     # access the user library page
     instrument.write('UL')
-
     rpm_switch(1, mode, instrument)
     rpm_switch(2, mode, instrument)
-
     # clear the buffer
     instrument.write('BC')
 
+
 # If running this library, print docstring for all functions
 if __name__ == "__main__":
+    
     print(CV_output_san.__doc__, '\n',
           select_device.__doc__, '\n',
-          csv_writer.__doc__, '\n',
-          dual_plot.__doc__, '\n',
-          test_type.__doc__, '\n',
-          read_4200_x.__doc__, '\n',
-          rpm_switch.__doc__, '\n')
+          csv_writer.__doc__,    '\n',
+          dual_plot.__doc__,     '\n',
+          test_type.__doc__,     '\n',
+          read_4200_x.__doc__,   '\n',
+          rpm_switch.__doc__,    '\n',
+          init_4200.__doc__,     '\n')

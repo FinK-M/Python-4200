@@ -1,4 +1,12 @@
 from Python_4200 import *
+import time
+
+class instrument(object):
+    """docstring for instrument"""
+    def __init__(self, arg):
+        super(instrument, self).__init__()
+        self.arg = arg
+        
 
 if __name__ == "__main__":
 
@@ -51,7 +59,7 @@ if __name__ == "__main__":
             instr.write(command.rstrip('\n'))
 
         print("Running tests...")
-        instr.wait_for_srq(timeout=250000)
+        instr.wait_for_srq(timeout=5000)
         print("Done!")
 
         instr.write(':CVU:DATA:Z?')
@@ -61,19 +69,19 @@ if __name__ == "__main__":
 
         if ttype == 0:
             volt = read_4200_x(':CVU:DATA:VOLT?', instr)
-            csv_writer(prim, sec, volt, 'CV_results')
+            csv_writer(prim, sec, volt, str(int(time.time())) + '_CV')
             dual_plot(volt, "Volts (V)", prim, "Capacitance (F)",
                       sec, "Resistance (Ω)", min(volt), max(volt), False)
 
         elif ttype == 1:
             freq = read_4200_x(':CVU:DATA:FREQ?', instr)
-            csv_writer(prim, sec, freq, 'CF_results')
+            csv_writer(prim, sec, freq, str(int(time.time())) + '_CF')
             dual_plot(freq, "Frequency (Hz)", prim, "Capacitance (F)",
                       sec, "Resistance (Ω)", min(freq), max(freq), True)
 
         elif ttype == 2:
             tstamp = read_4200_x(':CVU:DATA:TSTAMP?', instr)
-            csv_writer(prim, sec, tstamp, 'CT_results')
+            csv_writer(prim, sec, tstamp, str(int(time.time())) + '_CT')
             dual_plot(tstamp, "Time (S)", prim, "Capacitance (F)",
                       sec, "Resistance (Ω)", min(tstamp), max(tstamp), False)
 

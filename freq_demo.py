@@ -1,31 +1,171 @@
 import visa
+import csv
 from time import sleep
 from Python_4200 import select_device
 
-rm = visa.ResourceManager()
-#addr = select_device(rm)
-addr = 'GPIB0::3::INSTR'
-instr = rm.open_resource(addr)
+class routine(object):
 
-for i in range(0, 401, 25):
-    Vout = (i - 2.1333)/42.139
-    instr.write("VSET " + str(Vout))
-    print(str(i) + " Hz " + str(Vout) + " V")
-    sleep(5)
+    instances = 0
+    routines = []
+    csv_params = []
 
-instr.write("VSET 0")
+    def __init__(self, name, instrument, delay = 1, steps = 5, low_f = 50, high_f = 100):
+        routine.instances += 1
+        self.name = name
+        self.instrument = instrument
+        self.delay = delay
+        self.steps = steps
+        self.low_f = low_f
+        self.high_f = high_f
+        self.params = [self.name, self.instrument, self.delay, self.steps, self.low_f, self.high_f]
+        routine.csv_params.append(self.params)
+        routine.routines.append(self)
 
-"""
-Vout = 0
-while True:
-    try:
-        freq = int(input("Enter a freq between 40 and 400Hz: "))
-        if freq < 40 or freq > 400:
-            raise ValueError
+    def parameters(self):
+         self.description = "{0}: delay {1} s, {2} steps, start f {3}Hz, end f {4}Hz".format(self.name, self.delay, self.steps, self.low_f, self.high_f)
+         print(self.description)
+
+    def set_delay(self, delay = 0):
+        
+        if type(delay) != int and type(delay) != float:
+            raise ValueError("Delay must be a float or int")
+
+        if delay >= 1:
+            self.delay = delay
+            
         else:
-            Wait = 10/freq
-            Vout = float((freq - 2.1333)/42.139)
-            instr.write("VSET " + str(Vout))
-    except ValueError:
-        print("Enter a valid frequency")
-"""
+            while True:
+                try:
+                    self.delay = float(input("Enter delay in seconds (1 or greater): "))
+                    if self.delay < 1:
+                        raise ValueError
+                    break
+                except ValueError:
+                    print("Please enter valid delay...")
+
+    def set_steps(self, steps = 0):
+
+        if type(steps) != int:
+            raise ValueError("Enter a postive integer number of steps")
+
+        if steps >= 1:
+            self.steps = steps
+
+        else:
+            while True:
+                try:
+                    self.steps = int(input("Enter number of steps (1 or greater): "))
+                    if self.steps < 1:
+                        raise ValueError
+                    break
+                except ValueError:
+                    print("Please enter valid number of steps...")
+
+    def set_low_f(self, low_f = 0):
+
+        if type(low_f) != int:
+            raise ValueError("Enter integer value between 40 and 300Hz")
+        
+        if low_f >= 40 and low_f <= 300:
+            self.low_f = low_f
+        
+        else:
+            while True:
+                try:
+                    self.low_f = int(input("Enter low frequency in Hz (40 < f < 400): "))
+                    if self.low_f < 40 or self.low_f > 399:
+                        raise ValueError
+                    break
+                except ValueError:
+                    print("Please enter valid frequency...")
+
+    def set_high_f(self, high_f = 0):
+
+        if type(high_f) != int:
+            raise ValueError("Enter integer value between 100 and 400Hz")
+        
+        if high_f >= 100 and high_f <= 400:
+            self.high_f = high_f
+        
+        else:
+            while True:
+                try:
+                    self.high_f = int(input("Enter high frequency in Hz (50 < f < 400): "))
+                    if self.high_f < 50 or self.high_f > 400:
+                        raise ValueError
+                    break
+                except ValueError:
+                    print("Please enter valid frequency...")
+
+    def run(self):
+        self.step_size = int((self.high_f - self.low_f)/self.steps)
+        for f in range(int(self.low_f), int(self.high_f + 1), self.step_size):
+            Vout = (f - 2.1333)/42.139
+            #self.instrument.write("VSET " + str(Vout))
+            print(f, "VSET " + str(Vout))
+            sleep(self.delay)
+        #self.instrument.write("VSET 0")
+
+
+def create_routine(instr = "i"):
+    name = input("Please enter the name for this routine: ")
+    r = routine(name, instr)
+    r.set_delay()
+    r.set_steps()
+    r.set_low_f()
+    r.set_high_f()
+
+def save_routines():
+    with open('settings.csv', 'w', newline='') as csvfile:
+        reswrite = csv.writer(csvfile)
+        for row in routine.csv_params:
+            reswrite.writerow(row)
+        csvfile.close()
+
+def open_routines():
+    with open('settings.csv', 'r', newline='') as csvfile:
+        resread = csv.reader(csvfile)
+        try:
+            for row in resread:
+                r =(routine(row[0], "i"))
+                r.name = row[0]
+                r.instrument = row[1]
+                r.delay = float(row[2])
+                r.steps = int(row[3])
+                r.low_f = int(row[4])
+                r.high_f = int(row[5])
+        except:
+            pass
+        csvfile.close()
+
+if __name__ == "__main__":
+    """
+    rm = visa.ResourceManager()
+    #addr = select_device(rm)
+    addr = 'GPIB0::3::INSTR'
+    instr = rm.open_resource(addr)
+    """
+    instr = "i"
+    
+    open_routines()
+
+    i = 0
+    for r in routine.routines:
+        print(i, ": ", end='')
+        r.parameters()
+        i += 1
+    
+
+    if i == 0:
+        print("Please create a first routine")
+        selection = 0
+        create_routine(instr)
+    else:
+        print(i, ": Create new routine")
+        selection = int(input("Make a selection: "))
+        if selection == i:
+            create_routine(instr)
+
+    active = routine.routines[selection]
+    active.run()
+    save_routines()
