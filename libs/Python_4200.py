@@ -2,6 +2,164 @@ import matplotlib.pyplot as plt
 from decimal import Decimal
 import csv
 
+class cap_test(object):
+    """
+    ---------------------------------------------------------------------------
+    INPUTS: None
+    ---------------------------------------------------------------------------
+    Contains general methods that can be used to set up any of the three types
+    of capacitance tests. Is the parent class for the more specific CV, CF, and
+    CT classes defined below
+    ---------------------------------------------------------------------------
+    """
+    def __init__(self, name, mode, model, speed, acv, length, dcvsoak):
+        self.mode = mode
+        self.name = name
+        self.model = model
+        self.speed = speed
+        self.acv = acv
+        self.length = length
+        self.dcvsoak = dcvsoak
+
+    def set_name(self, name = None):
+
+        if type(name) == str:
+            self.name = name
+        else:
+            while True:
+                try:
+                    self.name = str(input("Enter test name: "))
+                    break
+                except:
+                    print("Enter a valid name...")
+
+    def set_mode(self, mode = None):
+
+        modes = ["cv", "cf", "ct"]
+        if mode in modes:
+            self.mode = mode
+        else:
+            while True:
+                try:
+                    response = str(input("Choose mode (cv, ct, or cf): ")).lower()
+                    if response not in modes:
+                        raise ValueError
+                    else:
+                        self.mode = response
+                        break
+                except:
+                    print("Please choose a valid test mode...")
+
+    def set_model(self, model = None):
+
+        models = ["z-theta", "r+jx", "cp-gp", "cs-rs", "cp-d", "cs-d"]
+        try:
+            if model in models:
+                self.model = model
+            elif int(model) in range(6):
+                self.model = models[model]
+        except:
+            while True:
+                try:
+                    response = input("Choose model\n0: z-theta\n1: r+jx\n2: cp-gp\n3: cs-rs\n4: cp-d\n5: cs-d\n")
+                    if response in models:
+                        print("ok1")
+                        self.model = response
+                        break
+                    elif int(response) in range(6):
+                        print("ok2")
+                        self.model = models[int(response)]
+                        break
+                    else:
+                        raise ValueError
+                except ValueError:
+                    print("Please enter a valid selection")
+        self.model
+
+    def set_speed(self, speed = None):
+
+        if speed in range(3):
+            self.speed = str(speed)
+        elif speed == 4:
+            pass
+        else:
+            while True:
+                try:
+                    response = int(input("Select integration speed: "))
+                    if response in range(3):
+                        self.speed = str(response)
+                        break
+                    else:
+                        raise ValueError
+                except ValueError:
+                    print("Please enter a correct value: ")
+
+    def set_acv(self, acv = None):
+
+        if acv in range(0,101):
+            self.acv = str(acv/1000)
+        else:
+            while True:
+                try:
+                    response = int(input("Enter ac ripple in millivolts: "))
+                    if response in range(0,101):
+                        self.acv = str(response/1000)
+                        break
+                    else:
+                        raise ValueError
+                except ValueError:
+                    print("Please enter a valid voltage")
+    
+    def set_length(self, length = None):
+
+        lengths = ["0", "1.5", "3"]
+        if length in lengths:
+            self.length = str(length)
+        else:
+            while True:
+                try:
+                    response = input("Enter cable length: ")
+                    if response in lengths:
+                        self.length = response
+                        break
+                    else:
+                        raise ValueError
+                except ValueError:
+                    print("Please enter valid length")
+
+    def set_dcvsoak(self, dcvsoak = None):
+        
+        if dcvsoak in range(-30, 30):
+            self.dcvsoak = str(dcvsoak)
+        else:
+            while True:
+                try:
+                    response = float(input("Enter DC Soak voltage: "))
+                    if response in range(-30, 30):
+                        self.dcvsoak = str(response)
+                        break
+                    else:
+                        raise ValueError
+                except ValueError:
+                    print("Please enter valid voltage")
+
+class cv_test(cap_test):
+    """
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+    """
+    def __init__(self, name):
+        cap_test.__init__("cv", self.name)
+
+    def set_vrange(self, start, end, step):
+        
+        pass
+
+
+
 
 def CV_output_san(values):
     """

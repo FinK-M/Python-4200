@@ -1,11 +1,18 @@
 import visa
 import csv
 from time import sleep
-from Python_4200 import select_device
+from os import path
+from libs.Python_4200 import select_device
 
 
 class routine(object):
+    """
+    ---------------------------------------------------------------------------
 
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+    """
     instances = 0
     routines = []
     csv_params = []
@@ -120,7 +127,10 @@ def create_routine():
 
 
 def save_routines():
-    with open('settings.csv', 'w', newline='') as csvfile:
+    script_dir = path.dirname(__file__) #<-- absolute dir the script is in
+    rel_path = "data/settings.csv"
+    abs_file_path = path.join(script_dir, rel_path)
+    with open(abs_file_path, 'w', newline='') as csvfile:
         reswrite = csv.writer(csvfile)
         for row in routine.csv_params:
             reswrite.writerow(row)
@@ -129,7 +139,10 @@ def save_routines():
 
 def open_routines():
     try:
-        with open('settings.csv', 'r', newline='') as csvfile:
+        script_dir = path.dirname(__file__) #<-- absolute dir the script is in
+        rel_path = "data/settings.csv"
+        abs_file_path = path.join(script_dir, rel_path)
+        with open(abs_file_path, 'r', newline='') as csvfile:
             resread = csv.reader(csvfile)
             for row in resread:
                 r = (routine(row[0], "i"))

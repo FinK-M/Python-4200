@@ -1,4 +1,4 @@
-from Python_4200 import *
+from libs.Python_4200 import *
 import time
 
 class instrument(object):
@@ -38,13 +38,16 @@ if __name__ == "__main__":
 
     while True:
         ttype = test_type()
-
+        script_dir = path.dirname(__file__) #<-- absolute dir the script is in
         if ttype == 0:
-            cfile = 'commands_vsweep.txt'
+            rel_path = "data/commands_vsweep.txt"
+            cfile = path.join(script_dir, rel_path)
         elif ttype == 1:
-            cfile = 'commands_fsweep.txt'
+            rel_path = "data/commands_fsweep.txt"
+            cfile = path.join(script_dir, rel_path)
         elif ttype == 2:
-            cfile = 'commands_tsweep.txt'
+            rel_path = "data/commands_tsweep.txt"
+            cfile = path.join(script_dir, rel_path)
 
         # read commands file into a list
         try:
@@ -55,8 +58,8 @@ if __name__ == "__main__":
             raise SystemExit('Could not open command file!')
 
         # parse list and send each item in turn to the instrument
-        for command in commands:
-            instr.write(command.rstrip('\n'))
+        for c in commands:
+            instr.write(c.rstrip('\n'))
 
         print("Running tests...")
         instr.wait_for_srq(timeout=5000)
