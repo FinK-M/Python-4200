@@ -1,5 +1,6 @@
 from libs.Python_4200 import *
 import time
+from os import path
 
 class instrument(object):
     """docstring for instrument"""
@@ -34,7 +35,7 @@ if __name__ == "__main__":
     # specific to the Keithley 4200-SCS. Others may use '*IDN?'
     print("Instrument IDs as", instr.query('ID'))
 
-    init_4200(1, instrument)
+    init_4200(1, instr)
 
     while True:
         ttype = test_type()

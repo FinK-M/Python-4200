@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 from decimal import Decimal
+from time import sleep
 import csv
+import serial
+import visa
 
 class cap_test(object):
     """
@@ -12,32 +15,34 @@ class cap_test(object):
     CT classes defined below
     ---------------------------------------------------------------------------
     """
-    def __init__(self, name, mode, model, speed, acv, length, dcvsoak):
+    test_setup = False
+    instrument_setup = False
+    def __init__(self, label, mode, model, speed, acv, length, dcvsoak):
         self.mode = mode
-        self.name = name
+        self.label = label
         self.model = model
         self.speed = speed
         self.acv = acv
         self.length = length
         self.dcvsoak = dcvsoak
 
-    def set_name(self, name = None):
+    def set_name(self, label = None):
 
-        if type(name) == str:
-            self.name = name
+        if type(label) == str:
+            self.label = label
         else:
             while True:
                 try:
-                    self.name = str(input("Enter test name: "))
+                    self.label = str(input("Enter test label: "))
                     break
                 except:
-                    print("Enter a valid name...")
+                    print("Enter a valid label...")
 
     def set_mode(self, mode = None):
 
         modes = ["cv", "cf", "ct"]
         if mode in modes:
-            self.mode = mode
+            self.mode = modes.index(mode.lower())
         else:
             while True:
                 try:
@@ -55,20 +60,18 @@ class cap_test(object):
         models = ["z-theta", "r+jx", "cp-gp", "cs-rs", "cp-d", "cs-d"]
         try:
             if model in models:
-                self.model = model
+                self.model = models.index(model)
             elif int(model) in range(6):
-                self.model = models[model]
+                self.model = int(model)
         except:
             while True:
                 try:
                     response = input("Choose model\n0: z-theta\n1: r+jx\n2: cp-gp\n3: cs-rs\n4: cp-d\n5: cs-d\n")
                     if response in models:
-                        print("ok1")
-                        self.model = response
+                        self.model = models.index(response)
                         break
                     elif int(response) in range(6):
-                        print("ok2")
-                        self.model = models[int(response)]
+                        self.model = int(response)
                         break
                     else:
                         raise ValueError
@@ -79,7 +82,7 @@ class cap_test(object):
     def set_speed(self, speed = None):
 
         if speed in range(3):
-            self.speed = str(speed)
+            self.speed = speed
         elif speed == 4:
             pass
         else:
@@ -87,7 +90,7 @@ class cap_test(object):
                 try:
                     response = int(input("Select integration speed: "))
                     if response in range(3):
-                        self.speed = str(response)
+                        self.speed = response
                         break
                     else:
                         raise ValueError
@@ -97,13 +100,13 @@ class cap_test(object):
     def set_acv(self, acv = None):
 
         if acv in range(0,101):
-            self.acv = str(acv/1000)
+            self.acv = acv/1000
         else:
             while True:
                 try:
                     response = int(input("Enter ac ripple in millivolts: "))
                     if response in range(0,101):
-                        self.acv = str(response/1000)
+                        self.acv = response/1000
                         break
                     else:
                         raise ValueError
@@ -113,7 +116,7 @@ class cap_test(object):
     def set_length(self, length = None):
 
         lengths = ["0", "1.5", "3"]
-        if length in lengths:
+        if str(length) in lengths:
             self.length = str(length)
         else:
             while True:
@@ -127,21 +130,43 @@ class cap_test(object):
                 except ValueError:
                     print("Please enter valid length")
 
-    def set_dcvsoak(self, dcvsoak = None):
+    def set_dcvsoak(self, dcvsoak=None):
         
         if dcvsoak in range(-30, 30):
-            self.dcvsoak = str(dcvsoak)
+            self.dcvsoak = dcvsoak
         else:
             while True:
                 try:
                     response = float(input("Enter DC Soak voltage: "))
                     if response in range(-30, 30):
-                        self.dcvsoak = str(response)
+                        self.dcvsoak = response
                         break
                     else:
                         raise ValueError
                 except ValueError:
                     print("Please enter valid voltage")
+
+    def set_delay(self, delay=None):
+        if 0 < delay < 999:
+            self.delay = delay
+        else:
+            while True:
+                try:
+                    delay = float(input("Enter delay time: "))
+                    if 0 < delay < 999:
+                        self.delay = delay
+                        break
+                    else:
+                        raise ValueError
+                except ValueError:
+                    print("Please enter valid delay")
+
+    def set_intrument(self):
+        if not self.instrument_setup:
+            rm = visa.ResourceManager()
+            self.instr = rm.open_resource("GPIB0::17::INSTR")
+        self.instrument_setup = True
+
 
 class cv_test(cap_test):
     """
@@ -151,13 +176,97 @@ class cv_test(cap_test):
 
     ---------------------------------------------------------------------------
     """
-    def __init__(self, name):
-        cap_test.__init__("cv", self.name)
+    wrange_set = False
+    vrange_set = False
+    def __init__(self, label, model=2, speed=1, acv=30, length=1.5, dcvsoak=0, delay=0, mono = None):
+        self.label = label
+        self.model = model
+        self.speed = speed
+        self.acv = acv/1000
+        self.lenth = length
+        self.dcvsoak = dcvsoak
+        self.delay = delay
+        self.mono = mono
+        cap_test.__init__(self,label=label,mode="CV",model=model,speed=speed,acv=acv/1000,length=length,dcvsoak=dcvsoak)
 
-    def set_vrange(self, start, end, step):
+    def step_check(self,start, end, step):
+
+        if step > abs(end - start):
+            raise ValueError
+        elif (end - start < 0 and step > 0) or (end - start > 0 and step < 0):
+            step = - step
+            return [start, end, step]
+        else:
+            return [start, end, step]
+
+
+    def set_vrange(self, vstart=None, vend=None, vstep=None):
         
-        pass
+        if (type(vstart) is float or int) and (type(vend) is float or int) and (type(vstep) is float or int):
+            try:
+                self.vstart, self.vend, self.vstep = self.step_check(vstart, vend, vstep)
+            except:
+                print("Invalid variables entered")
+        else:
+            while True:
+                try:
+                    vstart = float(input("Enter start voltage: "))
+                    vend = float(input("Enter end voltage: "))
+                    vstep = float(input("Enter step size: "))
+                    self.vstart, self.vend, self.vstep = self.step_check(vstart, vend, vstep)
+                    break
+                except ValueError:
+                    print("Please enter vald voltages...")
+        self.vrange_set = True
 
+    def set_wavelengths(self, wstart=None, wend=None, wstep=None):
+
+        if type(wstart) is int and type(wend) is int and type(wstep) is int:
+            try:
+                self.wstart, self.wend, self.wstep = self.step_check(wstart, wend, wstep)
+            except:
+                print("Invalid variables entered")
+        else:
+            while True:
+                try:
+                    wstart = int(input("Enter start wavelength: "))
+                    wend = int(input("Enter end wavelength: "))
+                    wstep = int(input("Enter step size: "))
+                    self.wstart, self.wend, self.wstep = self.step_check(wstart, wend, wstep)
+                except ValueError:
+                    print("Please enter vald wavelengths...")
+        self.wrange_set = True
+
+    def setup_test(self):
+        self.commands = [":CVU:RESET",
+                     ":CVU:MODE 1",
+                     ":CVU:MODEL " + str(self.model),
+                     ":CVU:SPEED " + str(self.speed),
+                     ":CVU:ACV " + str(self.acv),
+                     ":CVU:FREQ 1E+6",
+                     ":CVU:DCV " + str(self.dcvsoak),
+                     ":CVU:ACZ:RANGE 0",
+                     ":CVU:CORRECT 0,0,0,",
+                     ":CVU:LENGTH " + str(self.length),
+                     ":CVU:SWEEP:DCV " + str(self.vstart) + "," + str(self.vend) + "," + str(self.vstep),
+                     ":CVU:DELAY:SWEEP " + str(self.delay)]
+
+        for c in self.commands:
+            print(c)
+
+    def run_test(self):
+        if not self.test_setup:
+            self.setup_test()
+
+        if self.wrange_set:
+            cm = setup_cm110(self.mono)
+            for w in range(self.wstart, self.wend, self.wstep):
+                command(cm, "goto", w)
+                print(":CVU:TEST:RUN")
+                sleep(.5)
+
+        else:
+            print(":CVU:TEST:RUN")
 
 
 
@@ -379,6 +488,55 @@ def init_4200(mode, instrument):
     # clear the buffer
     instrument.write('BC')
 
+def setup_cm110(com_port):
+    cm = serial.Serial(
+            port=com_port,
+            baudrate=9600,
+            bytesize=serial.EIGHTBITS,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE
+            )
+    return cm
+
+def command(mono, operation, x=None, y=None):
+
+    commands = {"calibrate": 18, "dec": 1, "echo": 27, "goto": 16, "inc": 7,
+                "order": 51, "query": 56, "reset": 255, "scan": 12, "select": 26,
+                "size": 55, "speed": 13, "step": 54, "units": 50, "zero": 52
+                }
+
+    c = commands[operation.lower()]
+
+    if c in [51, 56, 26, 55, 50]:
+        mono.write(chr(c).encode())
+        mono.write(chr(x).encode())
+
+    elif c in [18, 16, 13]:
+        high, low = divmod(x, 0x100)
+
+        mono.write(chr(c).encode())
+
+        mono.write(chr(high).encode())
+        mono.write(chr(low).encode())
+
+    elif c in [1, 27, 7, 54, 57]:
+        mono.write(chr(c).encode())
+
+    elif c is 255:
+        for i in range(3):
+            mono.write(chr(255).encode())
+
+    elif c is 12:
+        s_high, s_low = divmod(x, 0x100)
+        e_high, e_low = divmod(x, 0x100)
+
+        mono.write(chr(c).encode())
+
+        mono.write(chr(s_high).encode())
+        mono.write(chr(s_low).encode())
+
+        mono.write(chr(e_high).encode())
+        mono.write(chr(e_low).encode())
 
 # If running this library, print docstring for all functions
 if __name__ == "__main__":

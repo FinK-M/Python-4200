@@ -1,13 +1,15 @@
 import serial
 from time import sleep
 
-cm110 = serial.Serial(
-		port="COM1",
-		baudrate=9600,
-		bytesize=serial.EIGHTBITS,
-		parity=serial.PARITY_NONE,
-		stopbits=serial.STOPBITS_ONE
-		)
+def setup_cm110(com_port):
+	cm = serial.Serial(
+			port=com_port,
+			baudrate=9600,
+			bytesize=serial.EIGHTBITS,
+			parity=serial.PARITY_NONE,
+			stopbits=serial.STOPBITS_ONE
+			)
+	return cm
 
 def command(mono, operation, x=None, y=None):
 
@@ -50,13 +52,17 @@ def command(mono, operation, x=None, y=None):
 		mono.write(chr(e_low).encode())
 
 if __name__ is "__main__":
+
+	cm = setup_cm110("COM1")
 	
 	for i in range(3900, 7000, 100):
-		command(cm110, "goto", i)
+		command(cm, "goto", i)
 		sleep(0.5)
 
 	sleep(2)
 
 	for i in range(7000, 3900, -100):
-		command(cm110, "goto", i)
+		command(cm, "goto", i)
 		sleep(0.5)
+
+	cm.close()
