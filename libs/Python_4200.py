@@ -97,23 +97,23 @@ class cap_test(object):
                 except ValueError:
                     print("Please enter a correct value: ")
 
-    def set_acv(self, acv = None):
+    def set_acv(self, acv=None):
 
-        if acv in range(0,101):
+        if acv in range(0, 101):
             self.acv = acv/1000
         else:
             while True:
                 try:
                     response = int(input("Enter ac ripple in millivolts: "))
-                    if response in range(0,101):
+                    if response in range(0, 101):
                         self.acv = response/1000
                         break
                     else:
                         raise ValueError
                 except ValueError:
                     print("Please enter a valid voltage")
-    
-    def set_length(self, length = None):
+
+    def set_length(self, length=None):
 
         lengths = ["0", "1.5", "3"]
         if str(length) in lengths:
@@ -131,7 +131,7 @@ class cap_test(object):
                     print("Please enter valid length")
 
     def set_dcvsoak(self, dcvsoak=None):
-        
+
         if dcvsoak in range(-30, 30):
             self.dcvsoak = dcvsoak
         else:
@@ -165,6 +165,7 @@ class cap_test(object):
         if not self.instrument_setup:
             rm = visa.ResourceManager()
             self.instr = rm.open_resource("GPIB0::17::INSTR")
+            init_4200(1, self.instr)
         self.instrument_setup = True
 
 
@@ -178,7 +179,7 @@ class cv_test(cap_test):
     """
     wrange_set = False
     vrange_set = False
-    def __init__(self, label, model=2, speed=1, acv=30, length=1.5, dcvsoak=0, delay=0, mono = None):
+    def __init__(self, label, model=2, speed=1, acv=30, length=1.5, dcvsoak=0, delay=0, mono = None, wait=1):
         self.label = label
         self.model = model
         self.speed = speed
@@ -187,6 +188,7 @@ class cv_test(cap_test):
         self.dcvsoak = dcvsoak
         self.delay = delay
         self.mono = mono
+        self.wait = wait
         cap_test.__init__(self,label=label,mode="CV",model=model,speed=speed,acv=acv/1000,length=length,dcvsoak=dcvsoak)
 
     def step_check(self,start, end, step):
@@ -239,20 +241,20 @@ class cv_test(cap_test):
 
     def setup_test(self):
         self.commands = [":CVU:RESET",
-                     ":CVU:MODE 1",
-                     ":CVU:MODEL " + str(self.model),
-                     ":CVU:SPEED " + str(self.speed),
-                     ":CVU:ACV " + str(self.acv),
-                     ":CVU:FREQ 1E+6",
-                     ":CVU:DCV " + str(self.dcvsoak),
-                     ":CVU:ACZ:RANGE 0",
-                     ":CVU:CORRECT 0,0,0,",
-                     ":CVU:LENGTH " + str(self.length),
-                     ":CVU:SWEEP:DCV " + str(self.vstart) + "," + str(self.vend) + "," + str(self.vstep),
-                     ":CVU:DELAY:SWEEP " + str(self.delay)]
-
+                         ":CVU:MODE 1",
+                         ":CVU:MODEL " + str(self.model),
+                         ":CVU:SPEED " + str(self.speed),
+                         ":CVU:ACV " + str(self.acv),
+                         ":CVU:FREQ 1E+6",
+                         ":CVU:DCV " + str(self.dcvsoak),
+                         ":CVU:ACZ:RANGE 0",
+                         ":CVU:CORRECT 0,0,0,",
+                         ":CVU:LENGTH " + str(self.length),
+                         ":CVU:SWEEP:DCV " + str(self.vstart) + "," + str(self.vend) + "," + str(self.vstep),
+                         ":CVU:DELAY:SWEEP " + str(self.delay)]
+        self.set_intrument()
         for c in self.commands:
-            print(c)
+            self.instr.write(c)
 
     def run_test(self):
         if not self.test_setup:
@@ -260,14 +262,36 @@ class cv_test(cap_test):
 
         if self.wrange_set:
             cm = setup_cm110(self.mono)
-            for w in range(self.wstart, self.wend, self.wstep):
+            i = 0
+            self.prim = []
+            self.sec = []
+            self.volt = []
+            self.wavelengths = []
+            for w in range(self.wstart, self.wend+1, self.wstep):
                 command(cm, "goto", w)
-                print(":CVU:TEST:RUN")
-                sleep(.5)
-
+                print(str(w/10) + "nm")
+                sleep(self.wait)
+                self.instr.write(":CVU:TEST:RUN")
+                self.instr.wait_for_srq()
+                self.instr.write(':CVU:DATA:Z?')
+                values = str(self.instr.read_raw()).replace("b'", "").rstrip("'")
+                values = values[:-5]
+                p, s = CV_output_san(values)
+                self.prim.append(p)
+                self.sec.append(s)
+                self.wavelengths.append(w)
+                self.volt = read_4200_x(':CVU:DATA:VOLT?', self.instr)
+                i += 1
+            cm.close()
         else:
             print(":CVU:TEST:RUN")
 
+        for i in range(len(self.prim[1])):
+            y = []
+            for j in range(len(self.prim)):
+                y.append(self.prim[j][i])
+            plt.plot(self.wavelengths, y)
+        plt.show()
 
 
 def CV_output_san(values):

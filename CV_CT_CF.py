@@ -7,7 +7,7 @@ class instrument(object):
     def __init__(self, arg):
         super(instrument, self).__init__()
         self.arg = arg
-        
+
 
 if __name__ == "__main__":
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
             instr.write(c.rstrip('\n'))
 
         print("Running tests...")
-        instr.wait_for_srq(timeout=5000)
+        instr.wait_for_srq()
         print("Done!")
 
         instr.write(':CVU:DATA:Z?')
