@@ -25,8 +25,6 @@ class cap_test(object):
     CT classes defined below
     ---------------------------------------------------------------------------
     """
-    test_setup = False
-    instrument_setup = False
 
     def __init__(self, label, mode, model, speed, acv, length, dcvsoak):
         self.mode = mode.lower()
@@ -36,6 +34,9 @@ class cap_test(object):
         self.acv = acv
         self.length = length
         self.dcvsoak = dcvsoak
+        self.test_setup = False
+        self.instrument_setup = False
+        self.wrange_set = False
 
     def set_name(self, label=None):
         """
@@ -343,76 +344,10 @@ class cap_test(object):
                     wstep = int(input("Enter step size: "))
                     self.wstart, self.wend, self.wstep = self.step_check(
                         wstart, wend, wstep)
+                    break
                 except ValueError:
                     print("Please enter vald wavelengths...")
         self.wrange_set = True
-
-
-class cv_test(cap_test):
-
-    """
-    ---------------------------------------------------------------------------
-       _____  __      __  _______   ______    _____   _______
-      / ____| \ \    / / |__   __| |  ____|  / ____| |__   __|
-     | |       \ \  / /     | |    | |__    | (___      | |
-     | |        \ \/ /      | |    |  __|    \___ \     | |
-     | |____     \  /       | |    | |____   ____) |    | |
-      \_____|     \/        |_|    |______| |_____/     |_|
-    ---------------------------------------------------------------------------
-
-    ---------------------------------------------------------------------------
-
-    ---------------------------------------------------------------------------
-    """
-    wrange_set = False
-    vrange_set = False
-
-    def __init__(self, label, model=2, speed=1, acv=30, length=1.5,
-                 dcvsoak=0, delay=0, mono=None, wait=1):
-        self.label = label
-        self.model = model
-        self.speed = speed
-        self.acv = acv/1000
-        self.lenth = length
-        self.dcvsoak = dcvsoak
-        self.delay = delay
-        self.mono = mono
-        self.wait = wait
-        cap_test.__init__(self, label=label, mode="CV", model=model,
-                          speed=speed, acv=acv/1000, length=length,
-                          dcvsoak=dcvsoak)
-
-    def set_vrange(self, vstart=None, vend=None, vstep=None):
-        """
-        ------------------------------------------------------------------------
-        FUNCTION: set_vrange
-        INPUTS: self, vstart, vend, vstep (float or int)
-        RETURNS: nothing
-        DEPENDENCIES: none
-        ------------------------------------------------------------------------
-
-        ------------------------------------------------------------------------
-        """
-        if ((type(vstart) is float or int)
-            and (type(vend) is float or int)
-            and (type(vstep) is float or int)):
-            try:
-                self.vstart, self.vend, self.vstep = self.step_check(
-                    vstart, vend, vstep)
-            except:
-                print("Invalid variables entered")
-        else:
-            while True:
-                try:
-                    vstart = float(input("Enter start voltage: "))
-                    vend = float(input("Enter end voltage: "))
-                    vstep = float(input("Enter step size: "))
-                    self.vstart, self.vend, self.vstep = self.step_check(
-                        vstart, vend, vstep)
-                    break
-                except ValueError:
-                    print("Please enter vald voltages...")
-        self.vrange_set = True
 
     def run_test(self):
         """
@@ -428,15 +363,14 @@ class cv_test(cap_test):
         if not self.test_setup:
             self.setup_test()
 
+        self.prim = []
+        self.sec = []
+        self.yaxis = []
+
         if self.wrange_set:
             cm = setup_cm110(self.mono)
             i = 0
-
-            self.prim = []
-            self.sec = []
-            self.volt = []
             self.wavelengths = []
-
             for w in range(self.wstart, self.wend+1, self.wstep):
 
                 command(cm, "goto", w)
@@ -455,20 +389,108 @@ class cv_test(cap_test):
                 self.prim.append(p)
                 self.sec.append(s)
                 self.wavelengths.append(w)
-                self.volt = read_4200_x(':CVU:DATA:VOLT?', self.instr)
 
                 i += 1
 
             cm.close()
-        else:
-            print(":CVU:TEST:RUN")
 
-        for i in range(len(self.prim[1])):
-            y = []
-            for j in range(len(self.prim)):
-                y.append(self.prim[j][i])
-            plt.plot(self.wavelengths, y)
-        plt.show()
+            if self.mode == "cv":
+                self.yaxis = read_4200_x(':CVU:DATA:VOLT?', self.instr)
+            elif self.mode == "cf":
+                self.yaxis = read_4200_x(':CVU:DATA:FREQ?', self.instr)
+            self.instr.close()
+            for i in range(len(self.prim[0])):
+                y = []
+                for j in range(len(self.prim)):
+                    y.append(self.prim[j][i])
+
+                plt.plot(self.wavelengths, y, label=str(self.yaxis[i])
+                         + self.mode)
+
+            plt.legend()
+            plt.show()
+
+        else:
+            self.instr.write(":CVU:TEST:RUN")
+            self.instr.wait_for_srq()
+
+            self.instr.write(':CVU:DATA:Z?')
+            values = (str(self.instr.read_raw())
+                      .replace("b'", "").rstrip("'"))
+            values = values[:-5]
+            self.prim, self.sec = CV_output_san(values)
+
+            if self.mode == "cv":
+                self.yaxis = read_4200_x(':CVU:DATA:VOLT?', self.instr)
+            elif self.mode == "cf":
+                self.yaxis = read_4200_x(':CVU:DATA:FREQ?', self.instr)
+            self.instr.close()
+            plt.plot(self.yaxis, self.prim)
+            plt.show()
+
+
+class cv_test(cap_test):
+
+    """
+    ---------------------------------------------------------------------------
+       _____  __      __  _______   ______    _____   _______
+      / ____| \ \    / / |__   __| |  ____|  / ____| |__   __|
+     | |       \ \  / /     | |    | |__    | (___      | |
+     | |        \ \/ /      | |    |  __|    \___ \     | |
+     | |____     \  /       | |    | |____   ____) |    | |
+      \_____|     \/        |_|    |______| |_____/     |_|
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------
+    """
+
+    def __init__(self, label, model=2, speed=1, acv=30, length=1.5,
+                 dcvsoak=0, delay=0, mono=None, wait=1):
+        self.label = label
+        self.model = model
+        self.speed = speed
+        self.acv = acv/1000
+        self.lenth = length
+        self.dcvsoak = dcvsoak
+        self.delay = delay
+        self.mono = mono
+        self.wait = wait
+        self.vrange_set = False
+        cap_test.__init__(self, label=label, mode="CV", model=model,
+                          speed=speed, acv=acv/1000, length=length,
+                          dcvsoak=dcvsoak)
+
+    def set_vrange(self, vstart=None, vend=None, vstep=None):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: set_vrange
+        INPUTS: self, vstart, vend, vstep (float or int)
+        RETURNS: nothing
+        DEPENDENCIES: none
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        if not (vstart is None and vend is None and vstep is None):
+            try:
+                self.vstart, self.vend, self.vstep = self.step_check(
+                    vstart, vend, vstep)
+            except:
+                print("Invalid variables entered")
+        else:
+            while True:
+                try:
+                    vstart = float(input("Enter start voltage: "))
+                    vend = float(input("Enter end voltage: "))
+                    vstep = float(input("Enter step size: "))
+                    self.vstart, self.vend, self.vstep = self.step_check(
+                        vstart, vend, vstep)
+                    break
+                except ValueError:
+                    print("Please enter vald voltages...")
+        self.vrange_set = True
 
 
 class cf_test(cap_test):

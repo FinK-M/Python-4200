@@ -2,13 +2,6 @@ from libs.Python_4200 import *
 import time
 from os import path
 
-class instrument(object):
-    """docstring for instrument"""
-    def __init__(self, arg):
-        super(instrument, self).__init__()
-        self.arg = arg
-
-
 if __name__ == "__main__":
 
     try:
@@ -39,7 +32,7 @@ if __name__ == "__main__":
 
     while True:
         ttype = test_type()
-        script_dir = path.dirname(__file__) #<-- absolute dir the script is in
+        script_dir = path.dirname(__file__)  # <-- absolute dir the script is in
         if ttype == 0:
             rel_path = "data/commands_vsweep.txt"
             cfile = path.join(script_dir, rel_path)
