@@ -37,6 +37,7 @@ class cap_test(object):
         self.test_setup = False
         self.instrument_setup = False
         self.wrange_set = False
+        self.single_w_val = 5500
 
     def set_name(self, label=None):
         """
@@ -367,8 +368,8 @@ class cap_test(object):
         self.sec = []
         self.yaxis = []
 
+        cm = setup_cm110(self.mono)
         if self.wrange_set:
-            cm = setup_cm110(self.mono)
             i = 0
             self.wavelengths = []
             for w in range(self.wstart, self.wend+1, self.wstep):
@@ -411,6 +412,7 @@ class cap_test(object):
             plt.show()
 
         else:
+            command(cm, "goto", self.single_w_val)
             self.instr.write(":CVU:TEST:RUN")
             self.instr.wait_for_srq()
 
