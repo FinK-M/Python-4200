@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from math import log10, floor
 from decimal import Decimal
 from time import sleep
+from IPython import display
 import csv
 import serial
 import visa
@@ -38,6 +39,7 @@ class cap_test(object):
         self.instrument_setup = False
         self.wrange_set = False
         self.single_w_val = 5500
+        self.status = "Ready"
 
     def set_name(self, label=None):
         """
@@ -349,6 +351,9 @@ class cap_test(object):
                 except ValueError:
                     print("Please enter vald wavelengths...")
         self.wrange_set = True
+        self.wsteps = 0
+        for w in range(self.wstart, self.wend+1, self.wstep):
+            self.wsteps += 1
 
     def run_test(self):
         """
@@ -361,6 +366,9 @@ class cap_test(object):
 
         ------------------------------------------------------------------------
         """
+        self.y = [[] for i in range(self.wsteps)]
+        self.g = []
+
         if not self.test_setup:
             self.setup_test()
 
@@ -375,7 +383,8 @@ class cap_test(object):
             for w in range(self.wstart, self.wend+1, self.wstep):
 
                 command(cm, "goto", w)
-                print(str(w/10) + "nm")
+                self.status = str(w/10) + "nm"
+                print(self.status)
                 sleep(self.wait)
 
                 self.instr.write(":CVU:TEST:RUN")
@@ -387,9 +396,14 @@ class cap_test(object):
                 values = values[:-5]
                 p, s = CV_output_san(values)
 
-                self.prim.append(p)
-                self.sec.append(s)
+                self.prim = p
+                self.sec = s
                 self.wavelengths.append(w)
+                for j in range(len(self.prim)):
+                    self.y[j].append(self.prim[j])
+                    self.g.append(plt.plot(self.y[j], "b-"))
+                display.display(plt.gcf())
+                display.clear_output(wait=True)
 
                 i += 1
 
@@ -400,19 +414,16 @@ class cap_test(object):
             elif self.mode == "cf":
                 self.yaxis = read_4200_x(':CVU:DATA:FREQ?', self.instr)
             self.instr.close()
+            """
             for i in range(len(self.prim[0])):
-                y = []
+                self.y = []
                 for j in range(len(self.prim)):
-                    y.append(self.prim[j][i])
-
-                plt.plot(self.wavelengths, y, label=str(self.yaxis[i])
-                         + self.mode)
-
-            plt.legend()
-            plt.show()
+                    self.y.append(self.prim[j][i])
+            """
 
         else:
             command(cm, "goto", self.single_w_val)
+            cm.close()
             self.instr.write(":CVU:TEST:RUN")
             self.instr.wait_for_srq()
 
@@ -427,8 +438,14 @@ class cap_test(object):
             elif self.mode == "cf":
                 self.yaxis = read_4200_x(':CVU:DATA:FREQ?', self.instr)
             self.instr.close()
-            plt.plot(self.yaxis, self.prim)
-            plt.show()
+"""
+    def plot_results(self):
+        plt.plot(self.wavelengths, self.y, label=str(self.yaxis[i])
+                 + self.mode)
+
+        plt.legend()
+        plt.show()
+"""
 
 
 class cv_test(cap_test):
@@ -484,8 +501,8 @@ class cv_test(cap_test):
         else:
             while True:
                 try:
-                    vstart = float(input("Enter start voltage: "))
-                    vend = float(input("Enter end voltage: "))
+                    vstart = int(input("Enter start voltage: "))
+                    vend = int(input("Enter end voltage: "))
                     vstep = float(input("Enter step size: "))
                     self.vstart, self.vend, self.vstep = self.step_check(
                         vstart, vend, vstep)
@@ -493,6 +510,7 @@ class cv_test(cap_test):
                 except ValueError:
                     print("Please enter vald voltages...")
         self.vrange_set = True
+        self.vsteps = floor((self.vstart-self.vend)/self.vstep)
 
 
 class cf_test(cap_test):
@@ -774,15 +792,18 @@ def rpm_switch(channel, mode, instrument):
     3 = SMU
     ---------------------------------------------------------------------------
     """
-    try:
-        # run script to switch RPM1 to CVU mode
-        instrument.write('EX pmuulib kxci_rpm_switch('
-                         + str(channel) + ',' + str(mode) + ')')
-        # wait for script to complete
-        instrument.wait_for_srq()
-        print("Configured PMU", channel)
-    except:
-        raise RuntimeError("Service Request timed out")
+    running = True
+    while running:
+        try:
+            # run script to switch RPM1 to CVU mode
+            instrument.write('EX pmuulib kxci_rpm_switch('
+                             + str(channel) + ',' + str(mode) + ')')
+            # wait for script to complete
+            instrument.wait_for_srq(timeout=3000)
+            print("Configured PMU", channel)
+            running = False
+        except:
+            print("Service Request timed out")
 
 
 def init_4200(mode, instrument):
@@ -817,6 +838,7 @@ def setup_cm110(com_port):
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE
     )
+    print("CM open")
     return cm
 
 
