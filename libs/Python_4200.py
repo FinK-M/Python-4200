@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
 from math import log10, floor
-from decimal import Decimal
 from time import sleep
 from IPython import display
 import csv
-import serial
 import visa
+from libs import cm110
+from libs import ki4200
+from libs import shutter
 
 
 class cap_test(object):
@@ -27,7 +28,8 @@ class cap_test(object):
     ---------------------------------------------------------------------------
     """
 
-    def __init__(self, label, mode, model, speed, acv, length, dcvsoak):
+    def __init__(self, label, mode, model, speed,
+                 acv, length, dcvsoak, mono, shut):
         self.mode = mode.lower()
         self.label = label
         self.model = model
@@ -35,6 +37,8 @@ class cap_test(object):
         self.acv = acv
         self.length = length
         self.dcvsoak = dcvsoak
+        self.mono = mono
+        self.shut = shut
         self.test_setup = False
         self.instrument_setup = False
         self.wrange_set = False
@@ -86,7 +90,7 @@ class cap_test(object):
                     else:
                         self.mode = response
                         break
-                except:
+                except ValueError:
                     print("Please choose a valid test mode...")
 
     def set_model(self, model=None):
@@ -267,8 +271,9 @@ class cap_test(object):
         if not self.instrument_setup:
             rm = visa.ResourceManager()
             self.instr = rm.open_resource("GPIB0::17::INSTR")
-            init_4200(1, self.instr)
-        self.instrument_setup = True
+            ki4200.init_4200(1, self.instr)
+
+        # self.instrument_setup = True
 
     def step_check(self, start, end, step):
         """
@@ -366,7 +371,9 @@ class cap_test(object):
 
         ------------------------------------------------------------------------
         """
-        self.y = [[] for i in range(self.wsteps)]
+        self.vsteps = floor(abs(self.vstart-self.vend)/self.vstep)+1
+
+        self.y = [[] for i in range(self.vsteps)]
         self.g = []
 
         if not self.test_setup:
@@ -376,16 +383,20 @@ class cap_test(object):
         self.sec = []
         self.yaxis = []
 
-        cm = setup_cm110(self.mono)
+        cm = cm110.setup_cm110(self.mono)
+        sh = shutter.ard_shutter(port="COM12")
+        sh.open()
+
         if self.wrange_set:
             i = 0
             self.wavelengths = []
             for w in range(self.wstart, self.wend+1, self.wstep):
-
-                command(cm, "goto", w)
-                self.status = str(w/10) + "nm"
-                print(self.status)
+                if self.wait > 0.5:
+                    sh.close()
+                cm110.command(cm, "goto", w)
                 sleep(self.wait)
+                if self.wait > 0.5:
+                    sh.open()
 
                 self.instr.write(":CVU:TEST:RUN")
                 self.instr.wait_for_srq()
@@ -394,25 +405,27 @@ class cap_test(object):
                 values = (str(self.instr.read_raw())
                           .replace("b'", "").rstrip("'"))
                 values = values[:-5]
-                p, s = CV_output_san(values)
+                p, s = ki4200.CV_output_san(values)
 
                 self.prim = p
                 self.sec = s
                 self.wavelengths.append(w)
                 for j in range(len(self.prim)):
                     self.y[j].append(self.prim[j])
-                    self.g.append(plt.plot(self.y[j], "b-"))
+                    self.g.append(plt.plot(self.wavelengths, self.y[j], "b-"))
                 display.display(plt.gcf())
                 display.clear_output(wait=True)
 
                 i += 1
 
             cm.close()
+            sh.close()
+            sh.shutdown()
 
             if self.mode == "cv":
-                self.yaxis = read_4200_x(':CVU:DATA:VOLT?', self.instr)
+                self.yaxis = ki4200.read_4200_x(':CVU:DATA:VOLT?', self.instr)
             elif self.mode == "cf":
-                self.yaxis = read_4200_x(':CVU:DATA:FREQ?', self.instr)
+                self.yaxis = ki4200.read_4200_x(':CVU:DATA:FREQ?', self.instr)
             self.instr.close()
             """
             for i in range(len(self.prim[0])):
@@ -422,7 +435,7 @@ class cap_test(object):
             """
 
         else:
-            command(cm, "goto", self.single_w_val)
+            cm110.command(cm, "goto", self.single_w_val)
             cm.close()
             self.instr.write(":CVU:TEST:RUN")
             self.instr.wait_for_srq()
@@ -431,21 +444,23 @@ class cap_test(object):
             values = (str(self.instr.read_raw())
                       .replace("b'", "").rstrip("'"))
             values = values[:-5]
-            self.prim, self.sec = CV_output_san(values)
+            self.prim, self.sec = ki4200.CV_output_san(values)
 
+            fig, ax = plt.subplots()
             if self.mode == "cv":
-                self.yaxis = read_4200_x(':CVU:DATA:VOLT?', self.instr)
+                self.xaxis = ki4200.read_4200_x(':CVU:DATA:VOLT?', self.instr)
+                ax.plot(self.xaxis, self.prim)
+                ax.set_xlabel("Volts (V)")
+                ax.set_ylabel("Capacitance (F)")
             elif self.mode == "cf":
-                self.yaxis = read_4200_x(':CVU:DATA:FREQ?', self.instr)
+                self.xaxis = ki4200.read_4200_x(':CVU:DATA:FREQ?', self.instr)
+                ax.plot(self.xaxis, self.prim)
+                ax.set_xlabel("Frequency (Hz)")
+                ax.set_ylabel("Capacitance (F)")
             self.instr.close()
-"""
-    def plot_results(self):
-        plt.plot(self.wavelengths, self.y, label=str(self.yaxis[i])
-                 + self.mode)
 
-        plt.legend()
-        plt.show()
-"""
+            display.display(fig)
+            display.clear_output(wait=True)
 
 
 class cv_test(cap_test):
@@ -466,7 +481,7 @@ class cv_test(cap_test):
     """
 
     def __init__(self, label, model=2, speed=1, acv=30, length=1.5,
-                 dcvsoak=0, delay=0, mono=None, wait=1):
+                 dcvsoak=0, delay=0, mono="COM1", shut="COM12", wait=1):
         self.label = label
         self.model = model
         self.speed = speed
@@ -475,11 +490,12 @@ class cv_test(cap_test):
         self.dcvsoak = dcvsoak
         self.delay = delay
         self.mono = mono
+        self.shut = shut
         self.wait = wait
         self.vrange_set = False
         cap_test.__init__(self, label=label, mode="CV", model=model,
                           speed=speed, acv=acv/1000, length=length,
-                          dcvsoak=dcvsoak)
+                          dcvsoak=dcvsoak, mono=mono, shut=shut)
 
     def set_vrange(self, vstart=None, vend=None, vstep=None):
         """
@@ -510,7 +526,7 @@ class cv_test(cap_test):
                 except ValueError:
                     print("Please enter vald voltages...")
         self.vrange_set = True
-        self.vsteps = floor((self.vstart-self.vend)/self.vstep)
+        self.vsteps = floor((self.vstart-self.vend)/self.vstep)+1
 
 
 class cf_test(cap_test):
@@ -533,7 +549,7 @@ class cf_test(cap_test):
     vrange_set = False
 
     def __init__(self, label, model=3, speed=1, acv=30, length=1.5,
-                 dcvsoak=0, delay=0, mono=None, wait=1):
+                 dcvsoak=0, delay=0, mono="COM1", wait=1):
         self.label = label
         self.model = model
         self.speed = speed
@@ -545,7 +561,7 @@ class cf_test(cap_test):
         self.wait = wait
         cap_test.__init__(self, label=label, mode="CF", model=model,
                           speed=speed, acv=acv/1000, length=length,
-                          dcvsoak=dcvsoak)
+                          dcvsoak=dcvsoak, mono=mono)
 
     def sig_fig_1(self, x):
         if x in range(1000, 10000000):
@@ -603,52 +619,6 @@ class cf_test(cap_test):
  |_|     \____/|_| \_|\_____|  |_|  |_____\____/|_| \_|_____/
 -------------------------------------------------------------------------------
 """
-
-
-def CV_output_san(values):
-    """
-    ---------------------------------------------------------------------------
-    FUNCTION: CV_output_san
-    INPUTS: values (str)
-    RETURNS: prim, sec (list float)
-    DEPENDENCIES: none
-    ---------------------------------------------------------------------------
-    Takes data string as proudced by KXCI command :CVU:OUTPUT:Z? and returns
-    two arrays of decimal numbers representing the pairs of values receieved
-    ---------------------------------------------------------------------------
-    """
-    values = (values.replace(";", ",").split(","))
-    prim = [float(Decimal(values[i])) for i in range(0, len(values), 2)]
-    sec = [float(values[i]) for i in range(1, len(values), 2)]
-    return prim, sec
-
-
-def select_device(rm):
-    """
-    ---------------------------------------------------------------------------
-    FUNCTION: select_device
-    INPUTS: rm (visa.ResourceManager)
-    RETURNS: devices[selection] (str)
-    DEPENDENCIES: pyvisa/visa
-    ---------------------------------------------------------------------------
-    Takes a resource manager as an argument and lists available visa devices
-    The user is then queried as to which device they would like to open
-    ---------------------------------------------------------------------------
-    """
-    devices = rm.list_resources()
-
-    print("Found the following ", len(devices), " devices")
-    for i in range(len(devices)):
-        print(i, ") ", devices[i])
-
-    selection = None
-    while not selection:
-        try:
-            selection = int(input("Please select device address: "))
-        except ValueError:
-            print("Invalid Number")
-
-    return(devices[selection])
 
 
 def csv_writer(prim, sec, ter, name):
@@ -747,150 +717,6 @@ def test_type():
             print("Invalid selection")
 
 
-def read_4200_x(read_command, instrument):
-    """
-    ---------------------------------------------------------------------------
-    FUNCTION: read_4200_x
-    INPUTS: read_command (str)
-    RETURNS: x (float list)
-    DEPENDENCIES: pyvisa/visa
-    ---------------------------------------------------------------------------
-    Takes an appropriate CVU read command as an argument and sends it to a
-    4200-SCS. Then reads the raw returned data and formats it into an list of
-    floats. Acceptable read commands are:
-    :CVU:DATA:VOLT?
-    :CVU:DATA:FREQ?
-    :CVU:DATA:STATUS?
-    :CVU:DATA:TSTAMP?
-    ---------------------------------------------------------------------------
-    """
-    ok_commands = [':CVU:DATA:VOLT?', ':CVU:DATA:FREQ?',
-                   ':CVU:DATA:STATUS?', ':CVU:DATA:TSTAMP?']
-    if read_command not in ok_commands:
-        raise ValueError('Incorrect read command passed')
-
-    instrument.write(read_command)
-    data = str(instrument.read_raw()).replace("b'", "").rstrip("'")
-    data = data[:-5].split(",")
-    x = [float(d) for d in data]
-    return x
-
-
-def rpm_switch(channel, mode, instrument):
-    """
-    ---------------------------------------------------------------------------
-    FUNCTION: rpm_switch
-    INPUTS: channel, mode (int)
-    RETURNS: nothing
-    DEPENDENCIES: pyvisa/visa
-    ---------------------------------------------------------------------------
-    Sends a command to the 4225 RPM modules of the 4200-SCS to set a given
-    channel to a given mode (see below).
-    0 = Pulsing
-    1 = 2 Wire CVU
-    2 = 4 Wire CVU
-    3 = SMU
-    ---------------------------------------------------------------------------
-    """
-    running = True
-    while running:
-        try:
-            # run script to switch RPM1 to CVU mode
-            instrument.write('EX pmuulib kxci_rpm_switch('
-                             + str(channel) + ',' + str(mode) + ')')
-            # wait for script to complete
-            instrument.wait_for_srq(timeout=3000)
-            print("Configured PMU", channel)
-            running = False
-        except:
-            print("Service Request timed out")
-
-
-def init_4200(mode, instrument):
-    """
-    ---------------------------------------------------------------------------
-    FUNCTION: init_4200
-    INPUTS: mode, instrument (int)
-    RETURNS: nothing
-    DEPENDENCIES: pyvisa/visa
-    ---------------------------------------------------------------------------
-    Sets up the 4200-SCS to recieve measurement commands and respond correctly
-    when RPM modules are attached. See function above for RPM modes.
-    ---------------------------------------------------------------------------
-    """
-    # clear the visa resource buffers
-    instrument.clear()
-    # send srq when finished with task
-    instrument.write('DR1')
-    # access the user library page
-    instrument.write('UL')
-    rpm_switch(1, mode, instrument)
-    rpm_switch(2, mode, instrument)
-    # clear the buffer
-    instrument.write('BC')
-
-
-def setup_cm110(com_port):
-    cm = serial.Serial(
-        port=com_port,
-        baudrate=9600,
-        bytesize=serial.EIGHTBITS,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE
-    )
-    print("CM open")
-    return cm
-
-
-def command(mono, operation, x=None, y=None):
-
-    commands = {"calibrate": 18, "dec": 1, "echo": 27, "goto": 16,
-                "inc": 7, "order": 51, "query": 56, "reset": 255,
-                "scan": 12, "select": 26, "size": 55, "speed": 13,
-                "step": 54, "units": 50, "zero": 52
-                }
-
-    c = commands[operation.lower()]
-
-    if c in [51, 56, 26, 55, 50]:
-        mono.write(chr(c).encode())
-        mono.write(chr(x).encode())
-
-    elif c in [18, 16, 13]:
-        high, low = divmod(x, 0x100)
-
-        mono.write(chr(c).encode())
-
-        mono.write(chr(high).encode())
-        mono.write(chr(low).encode())
-
-    elif c in [1, 27, 7, 54, 57]:
-        mono.write(chr(c).encode())
-
-    elif c is 255:
-        for i in range(3):
-            mono.write(chr(255).encode())
-
-    elif c is 12:
-        s_high, s_low = divmod(x, 0x100)
-        e_high, e_low = divmod(x, 0x100)
-
-        mono.write(chr(c).encode())
-
-        mono.write(chr(s_high).encode())
-        mono.write(chr(s_low).encode())
-
-        mono.write(chr(e_high).encode())
-        mono.write(chr(e_low).encode())
-
 # If running this library, print docstring for all functions
 if __name__ == "__main__":
-
-    print(CV_output_san.__doc__, '\n',
-          select_device.__doc__, '\n',
-          csv_writer.__doc__,    '\n',
-          dual_plot.__doc__,     '\n',
-          test_type.__doc__,     '\n',
-          read_4200_x.__doc__,   '\n',
-          rpm_switch.__doc__,    '\n',
-          init_4200.__doc__,     '\n')
+    print("library imported")
