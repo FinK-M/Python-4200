@@ -29,7 +29,7 @@ class cap_test(object):
     """
 
     def __init__(self, label, mode, model, speed,
-                 acv, length, dcvsoak, mono, shut):
+                 acv, length, dcvsoak, mono, shutter_port):
         self.mode = mode.lower()
         self.label = label
         self.model = model
@@ -38,12 +38,11 @@ class cap_test(object):
         self.length = length
         self.dcvsoak = dcvsoak
         self.mono = mono
-        self.shut = shut
+        self.shutter_port = shutter_port
         self.test_setup = False
         self.instrument_setup = False
         self.wrange_set = False
         self.single_w_val = 5500
-        self.status = "Ready"
 
     def set_name(self, label=None):
         """
@@ -294,39 +293,6 @@ class cap_test(object):
         else:
             return [start, end, step]
 
-    def setup_test(self):
-        """
-        ------------------------------------------------------------------------
-        FUNCTION: setup_test
-        INPUTS: self
-        RETURNS: nothing
-        DEPENDENCIES: pyvisa/visa
-        ------------------------------------------------------------------------
-
-        ------------------------------------------------------------------------
-        """
-        self.commands = [":CVU:RESET",
-                         ":CVU:MODE 1",
-                         ":CVU:MODEL " + str(self.model),
-                         ":CVU:SPEED " + str(self.speed),
-                         ":CVU:ACV " + str(self.acv),
-                         ":CVU:SOAK:DCV " + str(self.dcvsoak),
-                         ":CVU:ACZ:RANGE 0",
-                         ":CVU:CORRECT 0,0,0,",
-                         ":CVU:LENGTH " + str(self.length),
-                         ":CVU:DELAY:SWEEP " + str(self.delay)]
-
-        if self.mode == "cv":
-            self.commands.append(":CVU:FREQ 1E+6")
-            self.commands.append(":CVU:SWEEP:DCV " + str(self.vstart) + ","
-                                 + str(self.vend) + "," + str(self.vstep))
-        elif self.mode == "cf":
-            self.commands.append(":CVU:FREQ " + self.fstart + "," + self.fstop)
-
-        self.set_intrument()
-        for c in self.commands:
-            self.instr.write(c)
-
     def set_wavelengths(self, wstart=None, wend=None, wstep=None):
         """
         ------------------------------------------------------------------------
@@ -360,6 +326,60 @@ class cap_test(object):
         for w in range(self.wstart, self.wend+1, self.wstep):
             self.wsteps += 1
 
+    def set_single_w(self, w):
+        self.single_w_val = w
+
+    def set_shutter_port(self, p):
+        self.shutter_port = p
+
+    def set_mono_port(self, p):
+        self.mono = p
+
+    def set_second_delay(self, t):
+        self.second_delay = t
+
+    def set_minute_delay(self, t):
+        self.minute_delay = t
+
+    def set_second_wait(self, t):
+        self.second_wait = t
+
+    def set_minute_wait(self, t):
+        self.minute_wait = t
+
+    def setup_test(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: setup_test
+        INPUTS: self
+        RETURNS: nothing
+        DEPENDENCIES: pyvisa/visa
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        self.commands = [":CVU:RESET",
+                         ":CVU:MODE 1",
+                         ":CVU:MODEL " + str(self.model),
+                         ":CVU:SPEED " + str(self.speed),
+                         ":CVU:ACV " + str(self.acv),
+                         ":CVU:SOAK:DCV " + str(self.dcvsoak),
+                         ":CVU:ACZ:RANGE 0",
+                         ":CVU:CORRECT 0,0,0,",
+                         ":CVU:LENGTH " + str(self.length),
+                         ":CVU:DELAY:SWEEP " + str(self.delay)]
+
+        if self.mode == "cv":
+            self.commands.append(":CVU:FREQ 1E+6")
+            self.commands.append(":CVU:SWEEP:DCV " + str(self.vstart) + ","
+                                 + str(self.vend) + "," + str(self.vstep))
+        elif self.mode == "cf":
+            self.commands.append(":CVU:FREQ " + self.fstart + "," + self.fstop)
+
+        self.set_intrument()
+        for c in self.commands:
+            self.instr.write(c)
+
     def run_test(self):
         """
         ------------------------------------------------------------------------
@@ -371,23 +391,23 @@ class cap_test(object):
 
         ------------------------------------------------------------------------
         """
-        self.vsteps = floor(abs(self.vstart-self.vend)/self.vstep)+1
-
+        self.wait = self.second_wait + 60 * self.minute_wait
+        self.delay = self.second_delay + 60 * self.minute_delay
+        self.vsteps = floor(abs(self.vstart-self.vend)/abs(self.vstep))+1
         self.y = [[] for i in range(self.vsteps)]
         self.g = []
 
-        if not self.test_setup:
-            self.setup_test()
+        self.setup_test()
 
         self.prim = []
         self.sec = []
         self.yaxis = []
 
         cm = cm110.setup_cm110(self.mono)
-        sh = shutter.ard_shutter(port="COM12")
-        sh.open()
+        sh = shutter.ard_shutter(port=self.shutter_port)
 
         if self.wrange_set:
+            sh.open()
             i = 0
             self.wavelengths = []
             for w in range(self.wstart, self.wend+1, self.wstep):
@@ -437,6 +457,8 @@ class cap_test(object):
         else:
             cm110.command(cm, "goto", self.single_w_val)
             cm.close()
+            sleep(1)
+            sh.open()
             self.instr.write(":CVU:TEST:RUN")
             self.instr.wait_for_srq()
 
@@ -458,6 +480,8 @@ class cap_test(object):
                 ax.set_xlabel("Frequency (Hz)")
                 ax.set_ylabel("Capacitance (F)")
             self.instr.close()
+            sh.close()
+            sh.shutdown()
 
             display.display(fig)
             display.clear_output(wait=True)
@@ -480,8 +504,9 @@ class cv_test(cap_test):
     ---------------------------------------------------------------------------
     """
 
-    def __init__(self, label, model=2, speed=1, acv=30, length=1.5,
-                 dcvsoak=0, delay=0, mono="COM1", shut="COM12", wait=1):
+    def __init__(self, label, model=2, speed=1, acv=30,
+                 length=1.5, dcvsoak=0, delay=0, mono="COM1",
+                 shutter_port="COM12", wait=1):
         self.label = label
         self.model = model
         self.speed = speed
@@ -490,12 +515,13 @@ class cv_test(cap_test):
         self.dcvsoak = dcvsoak
         self.delay = delay
         self.mono = mono
-        self.shut = shut
+        self.shutter_port = shutter_port
         self.wait = wait
         self.vrange_set = False
         cap_test.__init__(self, label=label, mode="CV", model=model,
                           speed=speed, acv=acv/1000, length=length,
-                          dcvsoak=dcvsoak, mono=mono, shut=shut)
+                          dcvsoak=dcvsoak, mono=mono,
+                          shutter_port=shutter_port)
 
     def set_vrange(self, vstart=None, vend=None, vstep=None):
         """

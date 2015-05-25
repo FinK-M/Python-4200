@@ -101,7 +101,7 @@ def rpm_switch(channel, mode, instrument):
                              + str(channel) + ',' + str(mode) + ')')
             # wait for script to complete
             instrument.wait_for_srq(timeout=3000)
-            #print("Configured PMU", channel)
+            # print("Configured PMU", channel)
             running = False
         except:
             print("Service Request timed out")

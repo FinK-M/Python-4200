@@ -18,8 +18,7 @@ def command(mono, operation, x=None, y=None):
     commands = {"calibrate": 18, "dec": 1, "echo": 27, "goto": 16,
                 "inc": 7, "order": 51, "query": 56, "reset": 255,
                 "scan": 12, "select": 26, "size": 55, "speed": 13,
-                "step": 54, "units": 50, "zero": 52
-                }
+                "step": 54, "units": 50, "zero": 52}
 
     c = commands[operation.lower()]
 
