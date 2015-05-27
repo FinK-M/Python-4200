@@ -116,13 +116,11 @@ def delays(cv_test):
     """
     minute_wait_slider = widgets.IntSlider(min=0, max=60, step=1, value=0)
     second_wait_slider = widgets.IntSlider(min=0, max=60, step=1, value=0)
-    minute_delay_slider = widgets.IntSlider(min=0, max=60, step=1, value=0)
-    second_delay_slider = widgets.IntSlider(min=0, max=60, step=1, value=0)
+    delay_slider = widgets.IntSlider(min=0, max=60, step=1, value=0)
 
     minute_wait_slider.description = "Minutes"
     second_wait_slider.description = "Seconds"
-    minute_delay_slider.description = "Minutes"
-    second_delay_slider.description = "Seconds"
+    delay_slider.description = "Seconds"
 
     wait_text = widgets.HTML(
         value="Select time in minutes and seconds that " +
@@ -135,25 +133,16 @@ def delays(cv_test):
     delay_text.border_width = 10
     delay_text.border_color = "white"
 
-    set_minute_wait = widgets.interactive(
-        cv_test.set_minute_wait,
-        t=minute_wait_slider)
+    set_delay = widgets.interactive(
+        cv_test.set_delay,
+        delay=delay_slider)
 
-    set_second_wait = widgets.interactive(
-        cv_test.set_second_wait,
-        t=second_wait_slider)
+    set_wait = widgets.interactive(
+        cv_test.set_wait,
+        wait_sec=second_wait_slider,
+        wait_min=minute_wait_slider)
 
-    set_minute_delay = widgets.interactive(
-        cv_test.set_minute_delay,
-        t=minute_delay_slider)
-
-    set_second_delay = widgets.interactive(
-        cv_test.set_second_delay,
-        t=second_delay_slider)
-
-    return widgets.Box(children=[wait_text, set_minute_wait,
-                                 set_second_wait, delay_text,
-                                 set_minute_delay, set_second_delay])
+    return widgets.Box(children=[wait_text, set_wait, delay_text, set_delay])
 
 
 def com_discovery():
@@ -180,6 +169,7 @@ def com_discovery():
             result.append(port)
         except (OSError, serial.SerialException):
             pass
+    offline_mode = False
     if len(result) == 0:
         result.append("No Ports")
         default = "No Ports"
@@ -269,21 +259,28 @@ def equipment_config(cv_test):
 
 def test_params(cv_test):
 
-    frequencies = ['1K', '2K', '3K', '4K', '5K', '6K', '7K', '8K', '9K',
-                   '10K', '20K', '30K', '40K', '50K', '60K', '70K', '80K',
-                   '90K', '100K', '200K', '300K', '400K', '500K', '600K',
-                   '700K', '800K', '900K', '1M', '2M', '3M', '4M', '5M', '6M',
-                   '7M', '8M', '9M', '10M']
+    one_to_nine = [str(i) for i in range(1, 10)]
+    order = {"1K": 1000, "10K": 10000, "100K": 100000, "1M": 1000000}
 
     acv_slider = widgets.IntSlider(min=10, max=100, step=1, value=30)
     acv_slider.description = "AC ripple voltage (mV)"
+
     acv_set = widgets.interactive(cv_test.set_acv, acv=acv_slider)
     acv_set.border_width = 10
     acv_set.border_color = "white"
 
-    freq_select = widgets.Dropdown(options=frequencies, value="1M")
-    freq_select.description = "AC ripple frequency"
-    freq_set = widgets.interactive(cv_test.set_freq, freq=freq_select)
+    freq_num = widgets.Dropdown(options=one_to_nine, value="1")
+    freq_num.description = "AC ripple frequency"
+
+    freq_order = widgets.Dropdown(options=order, value=1000000)
+    freq_order.description = "Order"
+
+    freq_h = widgets.HBox(children=[freq_num, freq_order])
+
+    freq_set = widgets.interactive(
+        cv_test.set_freq,
+        f_num=freq_num,
+        f_order=freq_order)
     freq_set.border_width = 10
     freq_set.border_color = "white"
 
@@ -299,20 +296,27 @@ def test_params(cv_test):
         description="Load",
         value=False)
 
-    set_open = widgets.interactive(cv_test.set_open, o=open_comp)
-    set_short = widgets.interactive(cv_test.set_short, s=short_comp)
-    set_load = widgets.interactive(cv_test.set_load, l=load_comp)
+    comps = widgets.HBox(children=[open_comp, short_comp, load_comp])
+    comps.width = 290
+    comps.border_color = "white"
+
+    set_comps = widgets.interactive(
+        cv_test.set_comps,
+        open=open_comp,
+        short=short_comp,
+        load=load_comp)
+    set_comps.border_color = "white"
+    set_comps.border_width = 10
 
     comp_description = widgets.HTML(value="Select test compensations")
-    comps = widgets.HBox(children=[set_open, set_short, set_load])
 
     comp_box = widgets.VBox(children=[comp_description, comps])
-    comp_box.border_width = 10
+    comp_box.margin = 20
     comp_box.border_color = "white"
     comp_box.align = "center"
 
-    return widgets.VBox(children=[acv_set, freq_set, comp_box],
-                        height=1000)
+    return widgets.VBox(children=[acv_set, freq_h, comp_box],
+                        height=350)
 
 
 def init_GUI(cv_test):
@@ -348,13 +352,15 @@ def init_GUI(cv_test):
     tabs.set_title(3, 'Test Parameters')
     tabs.set_title(4, 'Equipment Configuration')
 
-    display(tabs)
-
     def start_test(name):
         cv_test.test_setup = False
         cv_test.run_test()
 
     if not offline_mode:
         start_button = widgets.Button(description="Run test")
-        display(start_button)
         start_button.on_click(start_test)
+        start_button.margin = 60
+        layout = widgets.HBox(children=[tabs, start_button])
+        display(layout)
+    else:
+        display(tabs)

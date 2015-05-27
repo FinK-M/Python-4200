@@ -231,7 +231,7 @@ class cap_test(object):
                 except ValueError:
                     print("Please enter valid voltage")
 
-    def set_delay(self, delay=None):
+    def set_delay(self, delay):
         """
         ------------------------------------------------------------------------
         FUNCTION: set_delay
@@ -242,19 +242,45 @@ class cap_test(object):
 
         ------------------------------------------------------------------------
         """
-        if 0 < delay < 999:
+        if 0 <= delay <= 60:
             self.delay = delay
         else:
             while True:
                 try:
                     delay = float(input("Enter delay time: "))
-                    if 0 < delay < 999:
+                    if 0 < delay <= 60:
                         self.delay = delay
                         break
                     else:
                         raise ValueError
                 except ValueError:
                     print("Please enter valid delay")
+
+    def set_wait(self, wait_sec, wait_min):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: set_wait
+        INPUTS: self, wait_sec, wait_min(int)
+        RETURNS: nothing
+        DEPENDENCIES: none
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        wait = wait_sec + wait_min * 60
+        if 0 <= wait <= 3660:
+            self.wait = wait
+        else:
+            while True:
+                try:
+                    wait = float(input("Enter wait time: "))
+                    if 0 < wait <= 3660:
+                        self.wait = wait
+                        break
+                    else:
+                        raise ValueError
+                except ValueError:
+                    print("Please enter valid wait time")
 
     def set_intrument(self):
         """
@@ -335,29 +361,9 @@ class cap_test(object):
     def set_mono_port(self, p):
         self.mono = p
 
-    def set_second_delay(self, t):
-        self.second_delay = t
-
-    def set_minute_delay(self, t):
-        self.minute_delay = t
-
-    def set_second_wait(self, t):
-        self.second_wait = t
-
-    def set_minute_wait(self, t):
-        self.minute_wait = t
-
-    def set_open(self, o):
-        self.open = str(int(o))
-
-    def set_short(self, s):
-        self.short = str(int(s))
-
-    def set_load(self, l):
-        self.load = str(int(l))
-
-    def set_comp(self):
-        return (self.open + "," + self.short + "," + self.load)
+    def set_comps(self, open, short, load):
+        self.comps = (str(int(open)) + "," + str(int(short)) +
+                      "," + str(int(load)))
 
     def setup_test(self):
         """
@@ -376,8 +382,8 @@ class cap_test(object):
                          ":CVU:SPEED " + str(self.speed),
                          ":CVU:ACV " + str(self.acv),
                          ":CVU:SOAK:DCV " + str(self.dcvsoak),
-                         ":CVU:ACZ:RANGE " + str(self.acv),
-                         ":CVU:CORRECT " + self.set_comp,
+                         ":CVU:ACZ:RANGE 0",
+                         ":CVU:CORRECT " + self.comps,
                          ":CVU:LENGTH " + str(self.length),
                          ":CVU:DELAY:SWEEP " + str(self.delay)]
 
@@ -403,8 +409,7 @@ class cap_test(object):
 
         ------------------------------------------------------------------------
         """
-        self.wait = self.second_wait + 60 * self.minute_wait
-        self.delay = self.second_delay + 60 * self.minute_delay
+
         self.vsteps = floor(abs(self.vstart-self.vend)/abs(self.vstep))+1
         self.y = [[] for i in range(self.vsteps)]
         self.g = []
@@ -567,23 +572,9 @@ class cv_test(cap_test):
         self.vrange_set = True
         self.vsteps = floor((self.vstart-self.vend)/self.vstep)+1
 
-    def set_freq(self, freq=None):
-
-        frequencies = ['1K', '2K', '3K', '4K', '5K', '6K', '7K', '8K', '9K',
-                       '10K', '20K', '30K', '40K', '50K', '60K', '70K', '80K',
-                       '90K', '100K', '200K', '300K', '400K', '500K', '600K',
-                       '700K', '800K', '900K', '1M', '2M', '3M', '4M', '5M',
-                       '6M', '7M', '8M', '9M', '10M']
-
-        if freq in frequencies:
-            if "K" in freq:
-                freq = int(freq[:-1])
-                self.freq = '%.0E' % (freq*1000)
-            else:
-                freq = int(freq[:-1])
-                self.freq = '%.0E' % (freq*1000000)
-        else:
-            print("Invalid frequency")
+    def set_freq(self, f_num, f_order):
+        freq = int(f_num) * f_order
+        self.freq = '%.0E' % freq
 
 
 class cf_test(cap_test):
