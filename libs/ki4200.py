@@ -10,8 +10,8 @@ def CV_output_san(values):
     RETURNS: prim, sec (list float)
     DEPENDENCIES: none
     ---------------------------------------------------------------------------
-    Takes data string as proudced by KXCI command :CVU:OUTPUT:Z? and returns
-    two arrays of decimal numbers representing the pairs of values receieved
+    Takes data string as produced by KXCI command :CVU:OUTPUT:Z? and returns
+    two arrays of decimal numbers representing the pairs of values received
     ---------------------------------------------------------------------------
     """
     values = (values.replace(";", ",").split(","))
@@ -115,7 +115,7 @@ def init_4200(mode, instrument):
     RETURNS: nothing
     DEPENDENCIES: pyvisa/visa
     ---------------------------------------------------------------------------
-    Sets up the 4200-SCS to recieve measurement commands and respond correctly
+    Sets up the 4200-SCS to receive measurement commands and respond correctly
     when RPM modules are attached. See function above for RPM modes.
     ---------------------------------------------------------------------------
     """

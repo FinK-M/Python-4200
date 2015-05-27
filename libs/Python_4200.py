@@ -115,7 +115,7 @@ class cap_test(object):
                     print("Choose model",
                           "0: z-theta", "1: r+jx", "2: cp-gp",
                           "3: cs-rs", "4: cp-d", "5: cs-d")
-                    response = input("Seletection (0-5): ")
+                    response = input("Selection (0-5): ")
                     if response in models:
                         self.model = models.index(response)
                         break
@@ -166,7 +166,7 @@ class cap_test(object):
 
         ------------------------------------------------------------------------
         """
-        if acv in range(0, 101):
+        if acv in range(10, 101):
             self.acv = acv/1000
         else:
             while True:
@@ -297,7 +297,7 @@ class cap_test(object):
         """
         ------------------------------------------------------------------------
         FUNCTION: set_wavelengths
-        INPUTS: self, wsart, wend, wstep (int)
+        INPUTS: self, wstart, wend, wstep (int)
         RETURNS: nothing
         DEPENDENCIES: none
         ------------------------------------------------------------------------
@@ -320,7 +320,7 @@ class cap_test(object):
                         wstart, wend, wstep)
                     break
                 except ValueError:
-                    print("Please enter vald wavelengths...")
+                    print("Please enter valid wavelengths...")
         self.wrange_set = True
         self.wsteps = 0
         for w in range(self.wstart, self.wend+1, self.wstep):
@@ -347,6 +347,18 @@ class cap_test(object):
     def set_minute_wait(self, t):
         self.minute_wait = t
 
+    def set_open(self, o):
+        self.open = str(int(o))
+
+    def set_short(self, s):
+        self.short = str(int(s))
+
+    def set_load(self, l):
+        self.load = str(int(l))
+
+    def set_comp(self):
+        return (self.open + "," + self.short + "," + self.load)
+
     def setup_test(self):
         """
         ------------------------------------------------------------------------
@@ -364,13 +376,13 @@ class cap_test(object):
                          ":CVU:SPEED " + str(self.speed),
                          ":CVU:ACV " + str(self.acv),
                          ":CVU:SOAK:DCV " + str(self.dcvsoak),
-                         ":CVU:ACZ:RANGE 0",
-                         ":CVU:CORRECT 0,0,0,",
+                         ":CVU:ACZ:RANGE " + str(self.acv),
+                         ":CVU:CORRECT " + self.set_comp,
                          ":CVU:LENGTH " + str(self.length),
                          ":CVU:DELAY:SWEEP " + str(self.delay)]
 
         if self.mode == "cv":
-            self.commands.append(":CVU:FREQ 1E+6")
+            self.commands.append(":CVU:FREQ " + self.freq)
             self.commands.append(":CVU:SWEEP:DCV " + str(self.vstart) + ","
                                  + str(self.vend) + "," + str(self.vstep))
         elif self.mode == "cf":
@@ -506,7 +518,7 @@ class cv_test(cap_test):
 
     def __init__(self, label, model=2, speed=1, acv=30,
                  length=1.5, dcvsoak=0, delay=0, mono="COM1",
-                 shutter_port="COM12", wait=1):
+                 shutter_port="COM12", wait=1, freq="1E+6"):
         self.label = label
         self.model = model
         self.speed = speed
@@ -518,6 +530,7 @@ class cv_test(cap_test):
         self.shutter_port = shutter_port
         self.wait = wait
         self.vrange_set = False
+        self.freq = freq
         cap_test.__init__(self, label=label, mode="CV", model=model,
                           speed=speed, acv=acv/1000, length=length,
                           dcvsoak=dcvsoak, mono=mono,
@@ -550,9 +563,27 @@ class cv_test(cap_test):
                         vstart, vend, vstep)
                     break
                 except ValueError:
-                    print("Please enter vald voltages...")
+                    print("Please enter valid voltages...")
         self.vrange_set = True
         self.vsteps = floor((self.vstart-self.vend)/self.vstep)+1
+
+    def set_freq(self, freq=None):
+
+        frequencies = ['1K', '2K', '3K', '4K', '5K', '6K', '7K', '8K', '9K',
+                       '10K', '20K', '30K', '40K', '50K', '60K', '70K', '80K',
+                       '90K', '100K', '200K', '300K', '400K', '500K', '600K',
+                       '700K', '800K', '900K', '1M', '2M', '3M', '4M', '5M',
+                       '6M', '7M', '8M', '9M', '10M']
+
+        if freq in frequencies:
+            if "K" in freq:
+                freq = int(freq[:-1])
+                self.freq = '%.0E' % (freq*1000)
+            else:
+                freq = int(freq[:-1])
+                self.freq = '%.0E' % (freq*1000000)
+        else:
+            print("Invalid frequency")
 
 
 class cf_test(cap_test):
@@ -590,7 +621,7 @@ class cf_test(cap_test):
                           dcvsoak=dcvsoak, mono=mono)
 
     def sig_fig_1(self, x):
-        if x in range(1000, 10000000):
+        if x in range(1000, 10000000, 1000):
             return round(x, -int(floor(log10(x))))
         else:
             raise ValueError("freq outside correct range")
@@ -608,7 +639,7 @@ class cf_test(cap_test):
                     self.fend = self.sig_fig_1(fend)
                     break
                 except ValueError:
-                    print("Please enter vald frequencies...")
+                    print("Please enter valid frequencies...")
 
     def set_dcv(self, dcv=None):
         """
@@ -743,6 +774,6 @@ def test_type():
             print("Invalid selection")
 
 
-# If running this library, print docstring for all functions
+# If running this library, print doc string for all functions
 if __name__ == "__main__":
     print("library imported")
