@@ -1,8 +1,8 @@
 import serial
 from IPython.html import widgets
 from IPython.display import display
-import os
-
+import threading
+from datetime import datetime
 
 def v_sliders(cv_test):
     """
@@ -146,6 +146,27 @@ def delays(cv_test):
     return widgets.Box(children=[wait_text, set_wait, delay_text, set_delay])
 
 
+def visa_selector(cv_test):
+    resources = cv_test.rm.list_resources()
+    if len(resources) == 0:
+        visa_okay = False
+        result = ["No resources"]
+    else:
+        visa_okay = True
+        result = resources
+
+    K4200_select = widgets.Dropdown(
+        options=result,
+        description="4200 SCS address")
+    if "GPIB0::17::INSTR" in result:
+        K4200_select.value = "GPIB0::17::INSTR"
+    if visa_okay:
+        widgets.interactive(
+            cv_test.set_instrument,
+            address=K4200_select)
+    return visa_okay, K4200_select
+
+
 def com_discovery():
     """
     ---------------------------------------------------------------------------
@@ -170,11 +191,11 @@ def com_discovery():
             result.append(port)
         except (OSError, serial.SerialException):
             pass
-    offline_mode = False
+    com_okay = True
     if len(result) == 0:
         result.append("No Ports")
         default = "No Ports"
-        offline_mode = True
+        com_okay = False
     elif "COM12" in result:
         default = "COM12"
     elif "COM13" in result:
@@ -182,7 +203,7 @@ def com_discovery():
     else:
         default = "COM1"
 
-    return offline_mode, result, default
+    return com_okay, result, default
 
 
 def com_selectors(cv_test):
@@ -199,7 +220,7 @@ def com_selectors(cv_test):
     forwards the off-line mode variable.
     ---------------------------------------------------------------------------
     """
-    offline_mode, result, default = com_discovery()
+    com_okay, result, default = com_discovery()
 
     mono_com_select = widgets.Dropdown(
         options=result,
@@ -218,7 +239,7 @@ def com_selectors(cv_test):
         cv_test.set_shutter_port,
         p=ard_com_select)
 
-    return mono_port_set, shutter_port_set, offline_mode
+    return mono_port_set, shutter_port_set, com_okay
 
 
 def equipment_config(cv_test):
@@ -235,7 +256,9 @@ def equipment_config(cv_test):
     and adds a white border. Then returns this Vbox
     ---------------------------------------------------------------------------
     """
-    mono_port_set, shutter_port_set, offline_mode = com_selectors(cv_test)
+    mono_port_set, shutter_port_set, com_okay = com_selectors(cv_test)
+    visa_okay, K4200_set = visa_selector(cv_test)
+    offline_mode = com_okay and visa_okay
 
     length_menu = widgets.Dropdown(
         options=["0", "1.5", "3"],
@@ -247,12 +270,11 @@ def equipment_config(cv_test):
         length=length_menu)
 
     menu_wrapper = widgets.VBox(children=[
-        length_set, mono_port_set, shutter_port_set])
+        length_set, mono_port_set, shutter_port_set, K4200_set])
 
     menu_wrapper.align = "end"
     menu_wrapper.width = 400
-    menu_wrapper.border_width = 20
-    menu_wrapper.border_color = "white"
+    menu_wrapper.margin = 20
 
     return widgets.VBox(children=[menu_wrapper],
                         height=200), offline_mode
@@ -426,7 +448,7 @@ def test_params(cv_test):
                         height=350)
 
 
-def file_output(cv_test):
+def custom_name(cv_test):
     """
     ---------------------------------------------------------------------------
     FUNCTION:
@@ -436,12 +458,27 @@ def file_output(cv_test):
     ---------------------------------------------------------------------------
     ---------------------------------------------------------------------------
     """
-    name_input = widgets.Text()
-    name_set = widgets.interactive()
+    descriptor = widgets.HTML(
+        value="<p>Enter a custom description for the file/s produced by " +
+        "this test.</p>" +
+        "<p>Leave blank to just use automatically generated tags.</p>")
+    descriptor.margin = 10
+    name_input = widgets.Text(description="Custom Text")
+    widgets.interactive(
+        cv_test.set_custom_name,
+        name=name_input)
 
-    path = os.path.join(os.getcwd(), "data")
-    if not os.path.exists(path):
-        os.makedirs(path)
+    time = widgets.HTML(value="")
+    time.margin = 10
+
+    def update():
+        time.value = (
+            "<b>Filename: </b>" + datetime.now().strftime("%H.%M.%S") +
+            "_" + cv_test.mode + cv_test.cust_name + ".csv")
+        threading.Timer(.5, update).start()
+    update()
+
+    return widgets.Box(children=[descriptor, name_input, time])
 
 
 def init_GUI(cv_test):
@@ -463,8 +500,9 @@ def init_GUI(cv_test):
     page3 = delays(cv_test)
     page4 = test_params(cv_test)
     page5, offline_mode = equipment_config(cv_test)
+    page6 = custom_name(cv_test)
 
-    pages = [page1, page2, page3, page4, page5]
+    pages = [page1, page2, page3, page4, page5, page6]
     for page in pages:
         page.border_width = 20
         page.border_color = "white"
@@ -476,6 +514,7 @@ def init_GUI(cv_test):
     tabs.set_title(2, 'Timings')
     tabs.set_title(3, 'Test Parameters')
     tabs.set_title(4, 'Equipment Configuration')
+    tabs.set_title(5, 'Path')
 
     def start_test(name):
         cv_test.test_setup = False

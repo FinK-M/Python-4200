@@ -9,6 +9,7 @@ from libs import ki4200
 from libs import shutter
 import os
 from datetime import datetime
+import re
 
 
 class cap_test(object):
@@ -47,6 +48,8 @@ class cap_test(object):
         self.instrument_setup = False
         self.wrange_set = False
         self.single_w_val = 5500
+        self.cust_name = ""
+        self.rm = visa.ResourceManager()
 
     def set_name(self, label=None):
         """
@@ -289,7 +292,7 @@ class cap_test(object):
                 except ValueError:
                     print("Please enter valid wait time")
 
-    def set_intrument(self):
+    def set_instrument(self, address="GPIB0::17::INSTR"):
         """
         ------------------------------------------------------------------------
         FUNCTION: set_instrument
@@ -301,8 +304,7 @@ class cap_test(object):
         ------------------------------------------------------------------------
         """
         if not self.instrument_setup:
-            rm = visa.ResourceManager()
-            self.instr = rm.open_resource("GPIB0::17::INSTR")
+            self.instr = self.rm.open_resource(address)
             ki4200.init_4200(1, self.instr)
 
         # self.instrument_setup = True
@@ -372,6 +374,13 @@ class cap_test(object):
         self.comps = (str(int(open)) + "," + str(int(short)) +
                       "," + str(int(load)))
 
+    def set_custom_name(self, name):
+        if name == "":
+            self.cust_name = ""
+        else:
+            self.cust_name = (re.sub('[\/:*?"<>| ]', '',
+                                     "_" + str(name)).rstrip())
+
     def save_to_csv(self, date, time, xdata, ydata):
 
         if self.mode == "cv":
@@ -402,14 +411,13 @@ class cap_test(object):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 
-        self.filename = time + " " + self.mode + " "
+        self.filename = time + "_" + self.mode + "_"
         if self.wrange_set:
-            self.filename += "multi.csv"
+            self.filename += "multi" + self.cust_name + ".csv"
         else:
-            self.filename += "single.csv"
-
-        with open(os.path.join(self.folder, self.filename), 'w',
-                  newline='') as csvfile:
+            self.filename += "single" + self.cust_name + ".csv"
+        self.final_path = os.path.join(self.folder, self.filename)
+        with open(self.final_path, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(header)
             writer.writerows(data)
@@ -444,7 +452,7 @@ class cap_test(object):
         elif self.mode == "cf":
             self.commands.append(":CVU:FREQ " + self.fstart + "," + self.fstop)
 
-        self.set_intrument()
+        self.set_instrument()
         for c in self.commands:
             self.instr.write(c)
 
