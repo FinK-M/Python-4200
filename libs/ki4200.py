@@ -14,7 +14,7 @@ def CV_output_san(values):
     two arrays of decimal numbers representing the pairs of values received
     ---------------------------------------------------------------------------
     """
-    values = (values.replace(";", ",").split(","))
+    values = values.replace(";", ",").split(",")
     prim = [float(Decimal(values[i])) for i in range(0, len(values), 2)]
     sec = [float(values[i]) for i in range(1, len(values), 2)]
     return prim, sec
@@ -71,8 +71,7 @@ def read_4200_x(read_command, instrument):
         raise ValueError('Incorrect read command passed')
 
     instrument.write(read_command)
-    data = str(instrument.read_raw()).replace("b'", "").rstrip("'")
-    data = data[:-5].split(",")
+    data = instrument.read(termination=",\r\n", encoding="utf-8").split(",")
     x = [float(d) for d in data]
     return x
 

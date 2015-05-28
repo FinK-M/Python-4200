@@ -7,6 +7,8 @@ import visa
 from libs import cm110
 from libs import ki4200
 from libs import shutter
+import os
+from datetime import datetime
 
 
 class cap_test(object):
@@ -35,6 +37,8 @@ class cap_test(object):
         self.model = model
         self.speed = speed
         self.acv = acv
+        self.acz = "0"
+        self.comps = "0,0,0"
         self.length = length
         self.dcvsoak = dcvsoak
         self.mono = mono
@@ -368,6 +372,49 @@ class cap_test(object):
         self.comps = (str(int(open)) + "," + str(int(short)) +
                       "," + str(int(load)))
 
+    def save_to_csv(self, date, time, xdata, ydata):
+
+        if self.mode == "cv":
+            if self.wrange_set:
+                header = ["wavelength"]
+                for v in self.yaxis:
+                    header.append(str(v) + "V")
+                for i in range(len(ydata)):
+                    ydata[i].insert(0, xdata[i])
+                data = ydata
+
+            else:
+                header = ["Voltage", "Capacitance"]
+                data = [[xdata[i], ydata[i]] for i in range(len(xdata))]
+
+        if self.mode == 'cf':
+            if self.wrange_set:
+                header = ["wavelength"]
+                for f in self.yaxis:
+                    header.append(str(f) + "Hz")
+                for i in range(len(ydata)):
+                    ydata[i].insert(0, xdata[i])
+                data = ydata
+            header = ["Frequency", "Capacitance"]
+            data = [[xdata[i], ydata[i]] for i in range(len(xdata))]
+
+        self.folder = os.path.join(os.getcwd(), "data/" + date)
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
+
+        self.filename = time + " " + self.mode + " "
+        if self.wrange_set:
+            self.filename += "multi.csv"
+        else:
+            self.filename += "single.csv"
+
+        with open(os.path.join(self.folder, self.filename), 'w',
+                  newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(header)
+            writer.writerows(data)
+            csvfile.close()
+
     def setup_test(self):
         """
         ------------------------------------------------------------------------
@@ -412,10 +459,43 @@ class cap_test(object):
 
         ------------------------------------------------------------------------
         """
+        date = datetime.now().strftime("%Y-%m-%d")
+        time = datetime.now().strftime("%H.%M.%S")
+
+        plt.figure(
+            num=1,
+            figsize=(12, 6),
+            dpi=80,
+            facecolor='w',
+            edgecolor='k')
+        ax = plt.subplot(111)
+        ax.minorticks_on()
+        ax.grid(b=True, which='major', color='#6C7A89')
+        ax.grid(b=True, which='minor', color='#D2D7D3')
+        if self.wrange_set:
+            ax.set_title(
+                "CVW sweep",
+                fontsize=20,
+                family="serif")
+            ax.set_xlabel("Wavelength (Angstoms)", fontsize=14)
+            ax.set_ylabel("Capacitance (F)", fontsize=14)
+        elif self.mode == "cv":
+            ax.set_title(
+                "CV sweep at " + str(self.single_w_val/10) + "nm",
+                fontsize=20,
+                family="serif")
+            ax.set_xlabel("Volts (V)", fontsize=14)
+            ax.set_ylabel("Capacitance (F)", fontsize=14)
+        elif self.mode == "cf":
+            ax.set_xlabel("Frequency (Hz)")
+            ax.set_ylabel("Capacitance (F)")
+
+        ax.plot()
+        display.display(plt.gcf())
+        display.clear_output(wait=True)
 
         self.vsteps = floor(abs(self.vstart-self.vend)/abs(self.vstep))+1
         self.y = [[] for i in range(self.vsteps)]
-        self.g = []
 
         self.setup_test()
 
@@ -427,10 +507,11 @@ class cap_test(object):
         sh = shutter.ard_shutter(port=self.shutter_port)
 
         if self.wrange_set:
+
             sh.open()
-            i = 0
             self.wavelengths = []
             for w in range(self.wstart, self.wend+1, self.wstep):
+
                 if self.wait > 0.5:
                     sh.close()
                 cm110.command(cm, "goto", w)
@@ -440,23 +521,19 @@ class cap_test(object):
 
                 self.instr.write(":CVU:TEST:RUN")
                 self.instr.wait_for_srq()
-
                 self.instr.write(':CVU:DATA:Z?')
-                values = (str(self.instr.read_raw())
-                          .replace("b'", "").rstrip("'"))
-                values = values[:-5]
+                values = self.instr.read(termination=",\r\n", encoding="utf-8")
                 p, s = ki4200.CV_output_san(values)
 
-                self.prim = p
-                self.sec = s
+                self.prim.append(p)
+                self.sec.append(s)
                 self.wavelengths.append(w)
-                for j in range(len(self.prim)):
-                    self.y[j].append(self.prim[j])
-                    self.g.append(plt.plot(self.wavelengths, self.y[j], "b-"))
-                display.display(plt.gcf())
-                display.clear_output(wait=True)
+                self.y = (list(map(list, zip(*self.prim))))
 
-                i += 1
+                for line in self.y:
+                    ax.plot(self.wavelengths, line)
+                    display.display(plt.gcf())
+                    display.clear_output(wait=True)
 
             cm.close()
             sh.close()
@@ -467,12 +544,12 @@ class cap_test(object):
             elif self.mode == "cf":
                 self.yaxis = ki4200.read_4200_x(':CVU:DATA:FREQ?', self.instr)
             self.instr.close()
-            """
-            for i in range(len(self.prim[0])):
-                self.y = []
-                for j in range(len(self.prim)):
-                    self.y.append(self.prim[j][i])
-            """
+
+            self.save_to_csv(
+                date=date,
+                time=time,
+                xdata=self.wavelengths,
+                ydata=self.prim)
 
         else:
             cm110.command(cm, "goto", self.single_w_val)
@@ -488,22 +565,23 @@ class cap_test(object):
             values = values[:-5]
             self.prim, self.sec = ki4200.CV_output_san(values)
 
-            fig, ax = plt.subplots()
             if self.mode == "cv":
                 self.xaxis = ki4200.read_4200_x(':CVU:DATA:VOLT?', self.instr)
                 ax.plot(self.xaxis, self.prim)
-                ax.set_xlabel("Volts (V)")
-                ax.set_ylabel("Capacitance (F)")
             elif self.mode == "cf":
                 self.xaxis = ki4200.read_4200_x(':CVU:DATA:FREQ?', self.instr)
                 ax.plot(self.xaxis, self.prim)
-                ax.set_xlabel("Frequency (Hz)")
-                ax.set_ylabel("Capacitance (F)")
             self.instr.close()
             sh.close()
             sh.shutdown()
 
-            display.display(fig)
+            self.save_to_csv(
+                date=date,
+                time=time,
+                xdata=self.xaxis,
+                ydata=self.prim)
+
+            display.display(plt.gcf())
             display.clear_output(wait=True)
 
 
