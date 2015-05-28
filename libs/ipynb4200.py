@@ -1,6 +1,7 @@
 import serial
 from IPython.html import widgets
 from IPython.display import display
+import os
 
 
 def v_sliders(cv_test):
@@ -257,33 +258,108 @@ def equipment_config(cv_test):
                         height=200), offline_mode
 
 
-def test_params(cv_test):
+def ac_volt(cv_test):
+    """
+    ---------------------------------------------------------------------------
+    FUNCTION:
+    INPUTS: cv_test (Python_4200.cv_test)
+    RETURNS:
+    DEPENDENCIES: IPython.html.widgets
+    ---------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
+    """
+    acv_slider = widgets.IntSlider(min=10, max=100, step=1, value=30)
+    acv_slider.description = "AC ripple voltage (mV)"
+    acv_slider.margin = 10
 
+    widgets.interactive(cv_test.set_acv, acv=acv_slider)
+
+    return acv_slider
+
+
+def ac_range(cv_test):
+    """
+    ---------------------------------------------------------------------------
+    FUNCTION:
+    INPUTS: cv_test (Python_4200.cv_test)
+    RETURNS:
+    DEPENDENCIES: IPython.html.widgets
+    ---------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
+    """
+    acz_range = widgets.Dropdown(
+        options={"Auto": "0", "1µA": "1E-6", "30µA": "30E-6", "1mA": "1E-3"},
+        value="0")
+    acz_range.align = "end"
+    acz_range.description = "Current Range"
+    acz_range.margin = 5
+
+    widgets.interactive(cv_test.set_acz, acz=acz_range)
+
+    return acz_range
+
+
+def ac_freq(cv_test):
+    """
+    ---------------------------------------------------------------------------
+    FUNCTION:
+    INPUTS: cv_test (Python_4200.cv_test)
+    RETURNS:
+    DEPENDENCIES: IPython.html.widgets
+    ---------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
+    """
     one_to_nine = [str(i) for i in range(1, 10)]
     order = {"1K": 1000, "10K": 10000, "100K": 100000, "1M": 1000000}
 
-    acv_slider = widgets.IntSlider(min=10, max=100, step=1, value=30)
-    acv_slider.description = "AC ripple voltage (mV)"
-
-    acv_set = widgets.interactive(cv_test.set_acv, acv=acv_slider)
-    acv_set.border_width = 10
-    acv_set.border_color = "white"
-
     freq_num = widgets.Dropdown(options=one_to_nine, value="1")
     freq_num.description = "AC ripple frequency"
+    freq_num.margin = 5
 
     freq_order = widgets.Dropdown(options=order, value=1000000)
     freq_order.description = "Order"
+    freq_order.margin = 5
 
-    freq_h = widgets.HBox(children=[freq_num, freq_order])
-
-    freq_set = widgets.interactive(
+    widgets.interactive(
         cv_test.set_freq,
         f_num=freq_num,
         f_order=freq_order)
-    freq_set.border_width = 10
-    freq_set.border_color = "white"
 
+    return freq_num, freq_order
+
+
+def speed(cv_test):
+    """
+    ---------------------------------------------------------------------------
+    FUNCTION:
+    INPUTS: cv_test (Python_4200.cv_test)
+    RETURNS:
+    DEPENDENCIES: IPython.html.widgets
+    ---------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
+    """
+    speed_menu = widgets.Dropdown(
+        options={"Fast": 0, "Normal": 1, "Quiet": 2},
+        value=1)
+    speed_menu.description = "Integration speed"
+    speed_menu.align = "end"
+    speed_menu.margin = 5
+
+    widgets.interactive(cv_test.set_speed, speed=speed_menu)
+
+    return speed_menu
+
+
+def comps(cv_test):
+    """
+    ---------------------------------------------------------------------------
+    FUNCTION:
+    INPUTS: cv_test (Python_4200.cv_test)
+    RETURNS:
+    DEPENDENCIES: IPython.html.widgets
+    ---------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
+    """
     open_comp = widgets.Checkbox(
         description="Open",
         value=False)
@@ -315,8 +391,57 @@ def test_params(cv_test):
     comp_box.border_color = "white"
     comp_box.align = "center"
 
-    return widgets.VBox(children=[acv_set, freq_h, comp_box],
+    return comp_box
+
+
+def test_params(cv_test):
+    """
+    ---------------------------------------------------------------------------
+    FUNCTION:
+    INPUTS: cv_test (Python_4200.cv_test)
+    RETURNS:
+    DEPENDENCIES: IPython.html.widgets
+    ---------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
+    """
+    freq_num, freq_order = ac_freq(cv_test)
+    acz_range = ac_range(cv_test)
+    speed_menu = speed(cv_test)
+    comp_box = comps(cv_test)
+    acv_slider = ac_volt(cv_test)
+
+    left_box = widgets.VBox(
+        children=[freq_num, acz_range],
+        align="end",
+        width=330)
+
+    right_box = widgets.VBox(
+        children=[freq_order, speed_menu],
+        align="end",
+        width=330)
+
+    box = widgets.HBox(children=[left_box, right_box])
+
+    return widgets.VBox(children=[acv_slider, box, comp_box],
                         height=350)
+
+
+def file_output(cv_test):
+    """
+    ---------------------------------------------------------------------------
+    FUNCTION:
+    INPUTS: cv_test (Python_4200.cv_test)
+    RETURNS:
+    DEPENDENCIES: IPython.html.widgets
+    ---------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
+    """
+    name_input = widgets.Text()
+    name_set = widgets.interactive()
+
+    path = os.path.join(os.getcwd(), "data")
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 
 def init_GUI(cv_test):

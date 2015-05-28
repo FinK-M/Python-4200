@@ -180,6 +180,9 @@ class cap_test(object):
                 except ValueError:
                     print("Please enter a valid voltage")
 
+    def set_acz(self, acz):
+        self.acz = acz
+
     def set_length(self, length=None):
         """
         ------------------------------------------------------------------------
@@ -382,7 +385,7 @@ class cap_test(object):
                          ":CVU:SPEED " + str(self.speed),
                          ":CVU:ACV " + str(self.acv),
                          ":CVU:SOAK:DCV " + str(self.dcvsoak),
-                         ":CVU:ACZ:RANGE 0",
+                         ":CVU:ACZ:RANGE " + self.acz,
                          ":CVU:CORRECT " + self.comps,
                          ":CVU:LENGTH " + str(self.length),
                          ":CVU:DELAY:SWEEP " + str(self.delay)]
