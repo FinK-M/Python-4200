@@ -160,11 +160,25 @@ def visa_selector(cv_test):
         description="4200 SCS address")
     if "GPIB0::17::INSTR" in result:
         K4200_select.value = "GPIB0::17::INSTR"
+    K4200_select.margin = 5
+
+    LS331_select = widgets.Dropdown(
+        options=result,
+        description="LS 331 address")
+    if "GPIB0::1::INSTR" in result:
+        LS331_select.value = "GPIB0::1::INSTR"
+    LS331_select.margin = 5
+
     if visa_okay:
         widgets.interactive(
-            cv_test.set_instrument,
+            cv_test.set_address,
+            instrument="K4200",
             address=K4200_select)
-    return visa_okay, K4200_select
+        widgets.interactive(
+            cv_test.set_address,
+            instrument="LS331",
+            address=LS331_select)
+    return visa_okay, K4200_select, LS331_select
 
 
 def com_discovery():
@@ -225,11 +239,13 @@ def com_selectors(cv_test):
     mono_com_select = widgets.Dropdown(
         options=result,
         description="Monochromator port")
+    mono_com_select.margin = 5
 
     ard_com_select = widgets.Dropdown(
         options=result,
         description="Arduino Shutter port",
         value=default)
+    ard_com_select.margin = 5
 
     mono_port_set = widgets.interactive(
         cv_test.set_mono_port,
@@ -257,24 +273,30 @@ def equipment_config(cv_test):
     ---------------------------------------------------------------------------
     """
     mono_port_set, shutter_port_set, com_okay = com_selectors(cv_test)
-    visa_okay, K4200_set = visa_selector(cv_test)
-    offline_mode = com_okay and visa_okay
+    visa_okay, K4200_set, LS331_set = visa_selector(cv_test)
+    offline_mode = not (com_okay and visa_okay)
 
     length_menu = widgets.Dropdown(
         options=["0", "1.5", "3"],
         description="Cable Length",
         value="1.5")
+    length_menu.margin = 5
 
-    length_set = widgets.interactive(
+    widgets.interactive(
         cv_test.set_length,
         length=length_menu)
 
-    menu_wrapper = widgets.VBox(children=[
-        length_set, mono_port_set, shutter_port_set, K4200_set])
+    left_wrapper = widgets.VBox(children=[
+        length_menu, mono_port_set, shutter_port_set])
+    left_wrapper.align = "end"
+    left_wrapper.margin = 10
 
-    menu_wrapper.align = "end"
-    menu_wrapper.width = 400
-    menu_wrapper.margin = 20
+    right_wrapper = widgets.VBox(children=[K4200_set, LS331_set])
+    right_wrapper.align = "end"
+    right_wrapper.margin = 10
+
+    menu_wrapper = widgets.HBox(children=[left_wrapper, right_wrapper])
+    menu_wrapper.align = "center"
 
     return widgets.VBox(children=[menu_wrapper],
                         height=200), offline_mode
