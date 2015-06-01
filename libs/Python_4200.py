@@ -12,6 +12,34 @@ from datetime import datetime
 import re
 
 
+class K4200_test(object):
+
+    """
+    ---------------------------------------------------------------------------
+     _  __  _  _     ___     ___     ___    _______   ______    _____   _______
+    | |/ / | || |   |__ \   / _ \   / _ \  |__   __| |  ____|  / ____| |__   __
+    | ' /  | || |_     ) | | | | | | | | |    | |    | |__    | (___      | |
+    |  <   |__   _|   / /  | | | | | | | |    | |    |  __|    \___ \     | |
+    | . \     | |    / /_  | |_| | | |_| |    | |    | |____   ____) |    | |
+    |_|\_\    |_|   |____|  \___/   \___/     |_|    |______| |_____/     |_|
+    ---------------------------------------------------------------------------
+    INHERITANCE: Object
+    ---------------------------------------------------------------------------
+    Contains general methods that can be used to set up any of the three types
+    of capacitance tests. Is the parent class for the more specific CV, CF, and
+    CT classes defined below
+    ---------------------------------------------------------------------------
+    """
+
+    def __init__(self, label, mode, speed,
+                 length, dcvsoak, mono_port, shutter_port):
+        self.label = label
+        self.speed = speed
+        self.length = length
+        self.mono_port = mono_port
+        self.shutter_port = shutter_port
+
+
 class cap_test(object):
 
     """
@@ -32,7 +60,7 @@ class cap_test(object):
     """
 
     def __init__(self, label, mode, model, speed,
-                 acv, length, dcvsoak, mono, shutter_port):
+                 acv, length, dcvsoak, mono_port, shutter_port):
         self.mode = mode.lower()
         self.label = label
         self.model = model
@@ -42,7 +70,7 @@ class cap_test(object):
         self.comps = "0,0,0"
         self.length = length
         self.dcvsoak = dcvsoak
-        self.mono = mono
+        self.mono_port = mono_port
         self.shutter_port = shutter_port
         self.test_setup = False
         self.instrument_setup = False
@@ -376,7 +404,7 @@ class cap_test(object):
         self.shutter_port = p
 
     def set_mono_port(self, p):
-        self.mono = p
+        self.mono_port = p
 
     def set_comps(self, open, short, load):
         self.comps = (str(int(open)) + "," + str(int(short)) +
@@ -518,7 +546,7 @@ class cap_test(object):
             self.k4200.write(c)
         self.set_visa_instr(instrument="LS331")
 
-        cm = cm110.setup_cm110(self.mono)
+        cm = cm110.setup_cm110(self.mono_port)
         sh = shutter.ard_shutter(port=self.shutter_port)
         return ax1, ax2, cm, sh
 
@@ -648,7 +676,7 @@ class cv_test(cap_test):
     """
 
     def __init__(self, label, model=2, speed=1, acv=30,
-                 length=1.5, dcvsoak=0, delay=0, mono="COM1",
+                 length=1.5, dcvsoak=0, delay=0, mono_port="COM1",
                  shutter_port="COM12", wait=1, freq="1E+6"):
         self.label = label
         self.model = model
@@ -657,14 +685,14 @@ class cv_test(cap_test):
         self.lenth = length
         self.dcvsoak = dcvsoak
         self.delay = delay
-        self.mono = mono
+        self.mono_port = mono_port
         self.shutter_port = shutter_port
         self.wait = wait
         self.vrange_set = False
         self.freq = freq
         cap_test.__init__(self, label=label, mode="CV", model=model,
                           speed=speed, acv=acv/1000, length=length,
-                          dcvsoak=dcvsoak, mono=mono,
+                          dcvsoak=dcvsoak, mono_port=mono_port,
                           shutter_port=shutter_port)
 
     def set_vrange(self, vstart=None, vend=None, vstep=None):
@@ -723,7 +751,7 @@ class cf_test(cap_test):
     vrange_set = False
 
     def __init__(self, label, model=3, speed=1, acv=30, length=1.5,
-                 dcvsoak=0, delay=0, mono="COM1", wait=1):
+                 dcvsoak=0, delay=0, mono_port="COM1", wait=1):
         self.label = label
         self.model = model
         self.speed = speed
@@ -731,11 +759,11 @@ class cf_test(cap_test):
         self.lenth = length
         self.dcvsoak = dcvsoak
         self.delay = delay
-        self.mono = mono
+        self.mono_port = mono_port
         self.wait = wait
         cap_test.__init__(self, label=label, mode="CF", model=model,
                           speed=speed, acv=acv/1000, length=length,
-                          dcvsoak=dcvsoak, mono=mono)
+                          dcvsoak=dcvsoak, mono_port=mono_port)
 
     def sig_fig_1(self, x):
         if x in range(1000, 10000000, 1000):

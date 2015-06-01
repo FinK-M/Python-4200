@@ -4,6 +4,7 @@ from IPython.display import display
 import threading
 from datetime import datetime
 
+
 def v_sliders(cv_test):
     """
     ---------------------------------------------------------------------------
