@@ -30,56 +30,18 @@ class K4200_test(object):
     CT classes defined below
     ---------------------------------------------------------------------------
     """
+    rm = visa.ResourceManager()
+    ls331_address = "GPIB0::1::INSTR"
+    k4200_address = "GPIB0::17::INSTR"
+    cust_name = ""
 
-    def __init__(self, label, mode, speed,
-                 length, dcvsoak, mono_port, shutter_port):
+    def __init__(self, label, speed, delay, mono_port, shutter_port, mode):
         self.label = label
         self.speed = speed
-        self.length = length
+        self.delay = delay
         self.mono_port = mono_port
         self.shutter_port = shutter_port
-
-
-class cap_test(object):
-
-    """
-    ---------------------------------------------------------------------------
-       _____              _____    _______   ______    _____   _______
-      / ____|     /\     |  __ \  |__   __| |  ____|  / ____| |__   __|
-     | |         /  \    | |__) |    | |    | |__    | (___      | |
-     | |        / /\ \   |  ___/     | |    |  __|    \___ \     | |
-     | |____   / ____ \  | |         | |    | |____   ____) |    | |
-      \_____| /_/    \_\ |_|         |_|    |______| |_____/     |_|
-    ---------------------------------------------------------------------------
-    INHERITANCE: Object
-    ---------------------------------------------------------------------------
-    Contains general methods that can be used to set up any of the three types
-    of capacitance tests. Is the parent class for the more specific CV, CF, and
-    CT classes defined below
-    ---------------------------------------------------------------------------
-    """
-
-    def __init__(self, label, mode, model, speed,
-                 acv, length, dcvsoak, mono_port, shutter_port):
-        self.mode = mode.lower()
-        self.label = label
-        self.model = model
-        self.speed = speed
-        self.acv = acv
-        self.acz = "0"
-        self.comps = "0,0,0"
-        self.length = length
-        self.dcvsoak = dcvsoak
-        self.mono_port = mono_port
-        self.shutter_port = shutter_port
-        self.test_setup = False
-        self.instrument_setup = False
-        self.wrange_set = False
-        self.single_w_val = 5500
-        self.cust_name = ""
-        self.ls331_address = "GPIB0::1::INSTR"
-        self.k4200_address = "GPIB0::17::INSTR"
-        self.rm = visa.ResourceManager()
+        self.mode = mode
 
     def set_name(self, label=None):
         """
@@ -101,6 +63,154 @@ class cap_test(object):
                     break
                 except:
                     print("Enter a valid label...")
+
+    def set_speed(self, speed=None):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: set_speed
+        INPUTS: self, speed(int)
+        RETURNS: none
+        DEPENDENCIES: none
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        if speed in range(3):
+            self.speed = speed
+        elif speed == 4:
+            pass
+        else:
+            while True:
+                try:
+                    response = int(input("Select integration speed: "))
+                    if response in range(3):
+                        self.speed = response
+                        break
+                    else:
+                        raise ValueError
+                except ValueError:
+                    print("Please enter a correct value: ")
+
+    def set_delay(self, delay):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: set_delay
+        INPUTS: self, delay(float or int)
+        RETURNS: nothing
+        DEPENDENCIES: none
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        if 0 <= delay <= 60:
+            self.delay = delay
+        else:
+            while True:
+                try:
+                    delay = float(input("Enter delay time: "))
+                    if 0 < delay <= 60:
+                        self.delay = delay
+                        break
+                    else:
+                        raise ValueError
+                except ValueError:
+                    print("Please enter valid delay")
+
+    def set_wait(self, wait_sec, wait_min):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: set_wait
+        INPUTS: self, wait_sec, wait_min(int)
+        RETURNS: nothing
+        DEPENDENCIES: none
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        wait = wait_sec + wait_min * 60
+        if 0 <= wait <= 3660:
+            self.wait = wait
+        else:
+            while True:
+                try:
+                    wait = float(input("Enter wait time: "))
+                    if 0 < wait <= 3660:
+                        self.wait = wait
+                        break
+                    else:
+                        raise ValueError
+                except ValueError:
+                    print("Please enter valid wait time")
+
+    def set_address(self, instrument, address):
+        if instrument == "K4200":
+            self.k4200_address = address
+        elif instrument == "LS331":
+            self.ls331_address = address
+
+    def set_visa_instr(self, instrument):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: set_visa_instr
+        INPUTS: self
+        RETURNS: nothing
+        DEPENDENCIES: pyvisa/visa
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        if instrument == "K4200":
+            self.k4200 = self.rm.open_resource(self.k4200_address)
+            ki4200.init_4200(1, self.k4200)
+        elif instrument == "LS331":
+            self.ls331 = self.rm.open_resource(self.ls331_address)
+
+    def set_shutter_port(self, p):
+        self.shutter_port = p
+
+    def set_mono_port(self, p):
+        self.mono_port = p
+
+    def set_custom_name(self, name):
+        if name == "":
+            self.cust_name = ""
+        else:
+            self.cust_name = (re.sub('[\/:*?"<>| ]', '',
+                                     "_" + str(name)).rstrip())
+
+
+class cap_test(K4200_test):
+
+    """
+    ---------------------------------------------------------------------------
+       _____              _____    _______   ______    _____   _______
+      / ____|     /\     |  __ \  |__   __| |  ____|  / ____| |__   __|
+     | |         /  \    | |__) |    | |    | |__    | (___      | |
+     | |        / /\ \   |  ___/     | |    |  __|    \___ \     | |
+     | |____   / ____ \  | |         | |    | |____   ____) |    | |
+      \_____| /_/    \_\ |_|         |_|    |______| |_____/     |_|
+    ---------------------------------------------------------------------------
+    INHERITANCE: Object
+    ---------------------------------------------------------------------------
+    Contains general methods that can be used to set up any of the three types
+    of capacitance tests. Is the parent class for the more specific CV, CF, and
+    CT classes defined below
+    ---------------------------------------------------------------------------
+    """
+
+    def __init__(self, label, mode, model, speed, delay,
+                 acv, length, dcvsoak, mono_port, shutter_port):
+        self.model = model
+        self.acv = acv
+        self.acz = "0"
+        self.comps = "0,0,0"
+        self.length = length
+        self.dcvsoak = dcvsoak
+        self.wrange_set = False
+        self.single_w_val = 5500
+        K4200_test.__init__(self, label=label, speed=speed, delay=delay,
+                            mono_port=mono_port, shutter_port=shutter_port,
+                            mode=mode)
 
     def set_mode(self, mode=None):
         """
@@ -164,33 +274,6 @@ class cap_test(object):
                 except ValueError:
                     print("Please enter a valid selection")
         self.model
-
-    def set_speed(self, speed=None):
-        """
-        ------------------------------------------------------------------------
-        FUNCTION: set_speed
-        INPUTS: self, speed(int)
-        RETURNS: none
-        DEPENDENCIES: none
-        ------------------------------------------------------------------------
-
-        ------------------------------------------------------------------------
-        """
-        if speed in range(3):
-            self.speed = speed
-        elif speed == 4:
-            pass
-        else:
-            while True:
-                try:
-                    response = int(input("Select integration speed: "))
-                    if response in range(3):
-                        self.speed = response
-                        break
-                    else:
-                        raise ValueError
-                except ValueError:
-                    print("Please enter a correct value: ")
 
     def set_acv(self, acv=None):
         """
@@ -271,80 +354,6 @@ class cap_test(object):
                 except ValueError:
                     print("Please enter valid voltage")
 
-    def set_delay(self, delay):
-        """
-        ------------------------------------------------------------------------
-        FUNCTION: set_delay
-        INPUTS: self, delay(float or int)
-        RETURNS: nothing
-        DEPENDENCIES: none
-        ------------------------------------------------------------------------
-
-        ------------------------------------------------------------------------
-        """
-        if 0 <= delay <= 60:
-            self.delay = delay
-        else:
-            while True:
-                try:
-                    delay = float(input("Enter delay time: "))
-                    if 0 < delay <= 60:
-                        self.delay = delay
-                        break
-                    else:
-                        raise ValueError
-                except ValueError:
-                    print("Please enter valid delay")
-
-    def set_wait(self, wait_sec, wait_min):
-        """
-        ------------------------------------------------------------------------
-        FUNCTION: set_wait
-        INPUTS: self, wait_sec, wait_min(int)
-        RETURNS: nothing
-        DEPENDENCIES: none
-        ------------------------------------------------------------------------
-
-        ------------------------------------------------------------------------
-        """
-        wait = wait_sec + wait_min * 60
-        if 0 <= wait <= 3660:
-            self.wait = wait
-        else:
-            while True:
-                try:
-                    wait = float(input("Enter wait time: "))
-                    if 0 < wait <= 3660:
-                        self.wait = wait
-                        break
-                    else:
-                        raise ValueError
-                except ValueError:
-                    print("Please enter valid wait time")
-
-    def set_address(self, instrument, address):
-        if instrument == "K4200":
-            self.k4200_address = address
-        elif instrument == "LS331":
-            self.ls331_address = address
-
-    def set_visa_instr(self, instrument):
-        """
-        ------------------------------------------------------------------------
-        FUNCTION: set_visa_instr
-        INPUTS: self
-        RETURNS: nothing
-        DEPENDENCIES: pyvisa/visa
-        ------------------------------------------------------------------------
-
-        ------------------------------------------------------------------------
-        """
-        if instrument == "K4200":
-            self.k4200 = self.rm.open_resource(self.k4200_address)
-            ki4200.init_4200(1, self.k4200)
-        elif instrument == "LS331":
-            self.ls331 = self.rm.open_resource(self.ls331_address)
-
     def step_check(self, start, end, step):
         """
         ------------------------------------------------------------------------
@@ -400,22 +409,9 @@ class cap_test(object):
     def set_single_w(self, w):
         self.single_w_val = w
 
-    def set_shutter_port(self, p):
-        self.shutter_port = p
-
-    def set_mono_port(self, p):
-        self.mono_port = p
-
     def set_comps(self, open, short, load):
         self.comps = (str(int(open)) + "," + str(int(short)) +
                       "," + str(int(load)))
-
-    def set_custom_name(self, name):
-        if name == "":
-            self.cust_name = ""
-        else:
-            self.cust_name = (re.sub('[\/:*?"<>| ]', '',
-                                     "_" + str(name)).rstrip())
 
     def save_to_csv(self, date, time, xdata, ydata, zdata=None):
 
@@ -481,16 +477,23 @@ class cap_test(object):
             dpi=80,
             facecolor='w',
             edgecolor='k')
-        ax1 = plt.subplot(121)
-        ax1.minorticks_on()
-        ax1.grid(b=True, which='major', color='#6C7A89')
-        ax1.grid(b=True, which='minor', color='#D2D7D3')
+
         ax2 = None
         if self.wrange_set:
-            ax1.set_title(
-                "CVW sweep",
-                fontsize=20,
-                family="serif")
+            ax1 = plt.subplot(121)
+            ax1.minorticks_on()
+            ax1.grid(b=True, which='major', color='#6C7A89')
+            ax1.grid(b=True, which='minor', color='#D2D7D3')
+            if self.mode == "cv":
+                ax1.set_title(
+                    "CVW sweep",
+                    fontsize=20,
+                    family="serif")
+            elif self.mode == "cf":
+                ax1.set_title(
+                    "CFW sweep",
+                    fontsize=20,
+                    family="serif")
             ax1.set_xlabel("Wavelength (Angstoms)", fontsize=14)
             ax1.set_ylabel("Capacitance (F)", fontsize=14)
 
@@ -508,6 +511,10 @@ class cap_test(object):
             ax2.plot()
             plt.tight_layout(h_pad=1.0)
         elif self.mode == "cv":
+            ax1 = plt.subplot(111)
+            ax1.minorticks_on()
+            ax1.grid(b=True, which='major', color='#6C7A89')
+            ax1.grid(b=True, which='minor', color='#D2D7D3')
             ax1.set_title(
                 "CV sweep at " + str(self.single_w_val/10) + "nm",
                 fontsize=20,
@@ -516,9 +523,17 @@ class cap_test(object):
             ax1.set_ylabel("Capacitance (F)", fontsize=14)
             ax1.plot()
         elif self.mode == "cf":
-            ax1.set_xlabel("Frequency (Hz)")
-            ax1.set_ylabel("Capacitance (F)")
-            ax1.plot()
+            ax1 = plt.subplot(111)
+            ax1.minorticks_on()
+            ax1.grid(b=True, which='major', color='#6C7A89')
+            ax1.grid(b=True, which='minor', color='#D2D7D3')
+            ax1.set_title(
+                "CF sweep at " + str(self.single_w_val/10) + "nm",
+                fontsize=20,
+                family="serif")
+            ax1.set_xlabel("Frequency (Hz)", fontsize=14)
+            ax1.set_ylabel("Capacitance (F)", fontsize=14)
+            ax1.semilogx()
 
         display.display(plt.gcf())
         display.clear_output(wait=True)
@@ -539,7 +554,8 @@ class cap_test(object):
             self.commands.append(":CVU:SWEEP:DCV " + str(self.vstart) + ","
                                  + str(self.vend) + "," + str(self.vstep))
         elif self.mode == "cf":
-            self.commands.append(":CVU:FREQ " + self.fstart + "," + self.fstop)
+            self.commands.append(
+                ":CVU:SWEEP:FREQ " + self.fstart + "," + self.fstop)
 
         self.set_visa_instr(instrument="K4200")
         for c in self.commands:
@@ -564,9 +580,6 @@ class cap_test(object):
         date = datetime.now().strftime("%Y-%m-%d")
         time = datetime.now().strftime("%H.%M.%S")
         display.clear_output(wait=True)
-
-        self.vsteps = floor(abs(self.vstart-self.vend)/abs(self.vstep))+1
-        self.y = [[] for i in range(self.vsteps)]
 
         ax1, ax2, cm, sh = self.setup_test()
 
@@ -690,10 +703,10 @@ class cv_test(cap_test):
         self.wait = wait
         self.vrange_set = False
         self.freq = freq
-        cap_test.__init__(self, label=label, mode="CV", model=model,
+        cap_test.__init__(self, label=label, mode="cv", model=model,
                           speed=speed, acv=acv/1000, length=length,
                           dcvsoak=dcvsoak, mono_port=mono_port,
-                          shutter_port=shutter_port)
+                          shutter_port=shutter_port, delay=delay)
 
     def set_vrange(self, vstart=None, vend=None, vstep=None):
         """
@@ -751,7 +764,8 @@ class cf_test(cap_test):
     vrange_set = False
 
     def __init__(self, label, model=3, speed=1, acv=30, length=1.5,
-                 dcvsoak=0, delay=0, mono_port="COM1", wait=1):
+                 dcvsoak=0, delay=0, mono_port="COM1", wait=1,
+                 shutter_port="COM12"):
         self.label = label
         self.model = model
         self.speed = speed
@@ -761,9 +775,10 @@ class cf_test(cap_test):
         self.delay = delay
         self.mono_port = mono_port
         self.wait = wait
-        cap_test.__init__(self, label=label, mode="CF", model=model,
+        cap_test.__init__(self, label=label, mode="cf", model=model,
                           speed=speed, acv=acv/1000, length=length,
-                          dcvsoak=dcvsoak, mono_port=mono_port)
+                          dcvsoak=dcvsoak, mono_port=mono_port,
+                          shutter_port=shutter_port, delay=delay)
 
     def sig_fig_1(self, x):
         if x in range(1000, 10000000, 1000):
@@ -771,17 +786,19 @@ class cf_test(cap_test):
         else:
             raise ValueError("freq outside correct range")
 
-    def set_frange(self, fstart=None, fend=None):
+    def set_frange(self,
+                   fstart_num=None, fstart_ord=None,
+                   fend_num=None, fend_ord=None):
         try:
-            self.fstart = self.sig_fig_1(fstart)
-            self.fstop = self.sig_fig_1(fend)
+            self.fstart = '%.0E' % (int(fstart_num) * fstart_ord)
+            self.fstop = '%.0E' % (int(fend_num) * fend_ord)
         except:
             while True:
                 try:
                     fstart = int(input("Enter start frequency: "))
                     fend = int(input("Enter end frequency: "))
-                    self.fstart = self.sig_fig_1(fstart)
-                    self.fend = self.sig_fig_1(fend)
+                    self.fstart = '%.0E' % self.sig_fig_1(fstart)
+                    self.fend = '%.0E' % self.sig_fig_1(fend)
                     break
                 except ValueError:
                     print("Please enter valid frequencies...")

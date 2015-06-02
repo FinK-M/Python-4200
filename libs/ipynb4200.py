@@ -3,6 +3,7 @@ from IPython.html import widgets
 from IPython.display import display
 import threading
 from datetime import datetime
+from libs import Python_4200
 
 
 def v_sliders(cv_test):
@@ -35,6 +36,10 @@ def v_sliders(cv_test):
 
     return widgets.Box(children=[voltage_sliders],
                        height=200)
+
+
+def f_select(test):
+    pass
 
 
 def w_sliders(cv_test):
@@ -154,7 +159,7 @@ def visa_selector(cv_test):
         result = ["No resources"]
     else:
         visa_okay = True
-        result = resources
+        result = [r for r in resources if "ASRL" not in r]
 
     K4200_select = widgets.Dropdown(
         options=result,
@@ -344,33 +349,53 @@ def ac_range(cv_test):
     return acz_range
 
 
-def ac_freq(cv_test):
+def ac_freq(test):
     """
     ---------------------------------------------------------------------------
     FUNCTION:
-    INPUTS: cv_test (Python_4200.cv_test)
+    INPUTS: test (Python_4200.test)
     RETURNS:
     DEPENDENCIES: IPython.html.widgets
     ---------------------------------------------------------------------------
     ---------------------------------------------------------------------------
     """
-    one_to_nine = [str(i) for i in range(1, 10)]
+    one_to_ten = [str(i) for i in range(1, 11)]
     order = {"1K": 1000, "10K": 10000, "100K": 100000, "1M": 1000000}
 
-    freq_num = widgets.Dropdown(options=one_to_nine, value="1")
-    freq_num.description = "AC ripple frequency"
+    freq_num = widgets.Dropdown(options=one_to_ten, value="1")
+    freq_num.description = "AC Start Frequency"
     freq_num.margin = 5
 
     freq_order = widgets.Dropdown(options=order, value=1000000)
     freq_order.description = "Order"
     freq_order.margin = 5
 
-    widgets.interactive(
-        cv_test.set_freq,
-        f_num=freq_num,
-        f_order=freq_order)
+    if test.mode == "cv":
+        widgets.interactive(
+            test.set_freq,
+            f_num=freq_num,
+            f_order=freq_order)
+        return freq_num, freq_order
+    elif test.mode == "cf":
 
-    return freq_num, freq_order
+        freq_num2 = widgets.Dropdown(options=one_to_ten, value="1")
+        freq_num2.description = "AC End Frequency"
+        freq_num2.margin = 5
+
+        freq_order2 = widgets.Dropdown(options=order, value=1000000)
+        freq_order2.description = "Order"
+        freq_order2.margin = 5
+
+        widgets.interactive(
+            test.set_frange,
+            fstart_num=freq_num,
+            fstart_ord=freq_order,
+            fend_num=freq_num2,
+            fend_ord=freq_order2)
+
+        freq_start = widgets.HBox(children=[freq_num, freq_order])
+        freq_end = widgets.HBox(children=[freq_num2, freq_order2])
+        return widgets.VBox(children=[freq_start, freq_end])
 
 
 def speed(cv_test):
@@ -439,33 +464,37 @@ def comps(cv_test):
     return comp_box
 
 
-def test_params(cv_test):
+def test_params(test):
     """
     ---------------------------------------------------------------------------
     FUNCTION:
-    INPUTS: cv_test (Python_4200.cv_test)
+    INPUTS: test (Python_4200.test)
     RETURNS:
     DEPENDENCIES: IPython.html.widgets
     ---------------------------------------------------------------------------
     ---------------------------------------------------------------------------
     """
-    freq_num, freq_order = ac_freq(cv_test)
-    acz_range = ac_range(cv_test)
-    speed_menu = speed(cv_test)
-    comp_box = comps(cv_test)
-    acv_slider = ac_volt(cv_test)
 
-    left_box = widgets.VBox(
-        children=[freq_num, acz_range],
-        align="end",
-        width=330)
+    acz_range = ac_range(test)
+    speed_menu = speed(test)
+    comp_box = comps(test)
+    acv_slider = ac_volt(test)
 
-    right_box = widgets.VBox(
-        children=[freq_order, speed_menu],
-        align="end",
-        width=330)
+    if test.mode == "cv":
+        freq_num, freq_order = ac_freq(test)
+        left_box = widgets.VBox(
+            children=[freq_num, acz_range],
+            align="end",
+            width=330)
 
-    box = widgets.HBox(children=[left_box, right_box])
+        right_box = widgets.VBox(
+            children=[freq_order, speed_menu],
+            align="end",
+            width=330)
+        box = widgets.HBox(children=[left_box, right_box])
+
+    elif test.mode == "cf":
+        box = widgets.HBox(children=[acz_range, speed_menu])
 
     return widgets.VBox(children=[acv_slider, box, comp_box],
                         height=350)
@@ -504,11 +533,47 @@ def custom_name(cv_test):
     return widgets.Box(children=[descriptor, name_input, time])
 
 
-def init_GUI(cv_test):
+def test_types():
+    select_type = widgets.RadioButtons(
+        description="Test to define")
+
+    def print_check(options):
+        select_type.options = options
+
+    types = ["CV", "CF", "IV"]
+    select_types = widgets.Checkbox(
+        options=types,
+        description="Tests to run")
+    widgets.interactive(
+        print_check,
+        options=select_types)
+    display(select_type, select_types)
+
+
+def mode_menu():
+    select_cv = widgets.Checkbox(
+        description="CV",
+        value=True)
+    select_cf = widgets.Checkbox(
+        description="CF",
+        value=False)
+
+    select_tests = widgets.HBox(
+        children=[select_cv, select_cf])
+
+    title = widgets.HTML(value="<h3>Select tests to run</h3>")
+
+    wrapper = widgets.VBox(children=[title, select_tests])
+    wrapper.align = "center"
+    wrapper.margin = 20
+    display(wrapper)
+
+
+def boot_GUI():
     """
     ---------------------------------------------------------------------------
     FUNCTION: init_GUI
-    INPUTS: cv_test (Python_4200.cv_test)
+    INPUTS: test (Python_4200.test)
     RETURNS: none
     DEPENDENCIES: IPython.html.widgets, IPython.display.display
     ---------------------------------------------------------------------------
@@ -518,12 +583,22 @@ def init_GUI(cv_test):
     is set to prevent a program crash when not connected to test set-up.
     ---------------------------------------------------------------------------
     """
-    page1 = v_sliders(cv_test)
-    page2 = w_sliders(cv_test)
-    page3 = delays(cv_test)
-    page4 = test_params(cv_test)
-    page5, offline_mode = equipment_config(cv_test)
-    page6 = custom_name(cv_test)
+    mode = "cv"
+    if mode == "cv":
+        test = Python_4200.cv_test("test")
+    elif mode == "cf":
+        test = Python_4200.cf_test("test")
+    if test.mode == "cv":
+        page1 = v_sliders(test)
+        tab1_title = 'Voltage Range'
+    else:
+        page1 = ac_freq(test)
+        tab1_title = 'Frequency Range'
+    page2 = w_sliders(test)
+    page3 = delays(test)
+    page4 = test_params(test)
+    page5, offline_mode = equipment_config(test)
+    page6 = custom_name(test)
 
     pages = [page1, page2, page3, page4, page5, page6]
     for page in pages:
@@ -532,7 +607,7 @@ def init_GUI(cv_test):
         page.align = "center"
 
     tabs = widgets.Tab(children=pages)
-    tabs.set_title(0, 'Voltage Range')
+    tabs.set_title(0, tab1_title)
     tabs.set_title(1, 'Wavelength Range')
     tabs.set_title(2, 'Timings')
     tabs.set_title(3, 'Test Parameters')
@@ -540,8 +615,7 @@ def init_GUI(cv_test):
     tabs.set_title(5, 'Path')
 
     def start_test(name):
-        cv_test.test_setup = False
-        cv_test.run_test()
+        test.run_test()
 
     if not offline_mode:
         start_button = widgets.Button(description="Run test")
