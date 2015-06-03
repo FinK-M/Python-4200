@@ -33,14 +33,15 @@ class K4200_test(object):
     rm = visa.ResourceManager()
     ls331_address = "GPIB0::1::INSTR"
     k4200_address = "GPIB0::17::INSTR"
+    mono_port = ""
+    shutter_port = ""
     cust_name = ""
+    run_all = False
 
     def __init__(self, label, speed, delay, mono_port, shutter_port, mode):
         self.label = label
         self.speed = speed
         self.delay = delay
-        self.mono_port = mono_port
-        self.shutter_port = shutter_port
         self.mode = mode
 
     def set_name(self, label=None):
@@ -197,6 +198,7 @@ class cap_test(K4200_test):
     CT classes defined below
     ---------------------------------------------------------------------------
     """
+    length = "1.5"
 
     def __init__(self, label, mode, model, speed, delay,
                  acv, length, dcvsoak, mono_port, shutter_port):
@@ -471,6 +473,8 @@ class cap_test(K4200_test):
 
         ------------------------------------------------------------------------
         """
+        plt.clf()
+        plt.close()
         plt.figure(
             num=1,
             figsize=(14, 5),
@@ -577,12 +581,12 @@ class cap_test(K4200_test):
 
         ------------------------------------------------------------------------
         """
+        colours = ["g", "b", "r", "c", "m", "y", "k"]
+        display.clear_output(wait=True)
         date = datetime.now().strftime("%Y-%m-%d")
         time = datetime.now().strftime("%H.%M.%S")
-        display.clear_output(wait=True)
 
         ax1, ax2, cm, sh = self.setup_test()
-
         self.prim = []
         self.sec = []
         self.yaxis = []
@@ -612,13 +616,21 @@ class cap_test(K4200_test):
                 self.prim.append(p)
                 self.sec.append(s)
                 self.wavelengths.append(w)
-                self.y = (list(map(list, zip(*self.prim))))
 
+                self.y = (list(map(list, zip(*self.prim))))
+                i = 0
                 for line in self.y:
-                    ax1.plot(self.wavelengths, line)
+                    if w > self.wstart:
+                        del(ax1.lines[-len(self.y)])
+                        del(ax2.lines[-1])
+                    if i < 7:
+                        ax1.plot(self.wavelengths, line, colours[i])
+                    else:
+                        ax1.plot(self.wavelengths, line)
                     ax2.plot(self.wavelengths, self.temp, 'b-')
                     display.display(plt.gcf())
                     display.clear_output(wait=True)
+                    i += 1
 
             cm.close()
             sh.close()
@@ -636,6 +648,10 @@ class cap_test(K4200_test):
                 xdata=self.wavelengths,
                 ydata=self.prim,
                 zdata=self.temp)
+            imgname = ("data/" + date + "/" + time + "_" + self.mode + "_" +
+                       "multi" + self.cust_name + ".png")
+            plt.savefig(imgname)
+            return 0
 
         else:
             cm110.command(cm, "goto", self.single_w_val)
@@ -669,6 +685,7 @@ class cap_test(K4200_test):
 
             display.display(plt.gcf())
             display.clear_output(wait=True)
+            return 0
 
 
 class cv_test(cap_test):
@@ -698,8 +715,6 @@ class cv_test(cap_test):
         self.lenth = length
         self.dcvsoak = dcvsoak
         self.delay = delay
-        self.mono_port = mono_port
-        self.shutter_port = shutter_port
         self.wait = wait
         self.vrange_set = False
         self.freq = freq
@@ -765,7 +780,7 @@ class cf_test(cap_test):
 
     def __init__(self, label, model=3, speed=1, acv=30, length=1.5,
                  dcvsoak=0, delay=0, mono_port="COM1", wait=1,
-                 shutter_port="COM12"):
+                 shutter_port="COM12", fstart="1E+6", fstop="3E+6"):
         self.label = label
         self.model = model
         self.speed = speed
@@ -775,6 +790,8 @@ class cf_test(cap_test):
         self.delay = delay
         self.mono_port = mono_port
         self.wait = wait
+        self.fstart = fstart
+        self.fstop = fstop
         cap_test.__init__(self, label=label, mode="cf", model=model,
                           speed=speed, acv=acv/1000, length=length,
                           dcvsoak=dcvsoak, mono_port=mono_port,
