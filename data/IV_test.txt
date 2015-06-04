@@ -1,19 +1,16 @@
-DE
-DR1
-CH1;CH2
-CH1,'VA','IA',1,1
-CH2,'VC','IC',3,3
-SS
-VR1,0,5,0.1,100E-3
-HT 0
-DT 0.001
-IT2
-RS 5
-RG 1,100E-9
-SM DM2
-LI 'VA','IA'
-SM DM1
-XN 'VA',1,1
-YA 'IA',1,1E-9
-MD
-ME1
+["DE",
+"DR1",
+"CH1;CH2",
+"CH1,'VA','IA',1,1",
+"CH2,'VC','IC',3,3",
+"SS",
+"VR1,0,5,0.1,100E-3",
+"HT 0",
+"DT 0.001",
+"IT2",
+"RS 5",
+"RG 1,100E-9",
+"SM DM2",
+"LI 'VA','IA'",
+"MD",
+"ME1"]
