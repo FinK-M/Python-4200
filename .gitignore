@@ -96,3 +96,5 @@ ehthumbs.db
 *.sublime-project
 *.sublime-workspace
 *.sublime-project
+Python CVW GUI.ipynb
+*.png
