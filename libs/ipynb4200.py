@@ -22,11 +22,11 @@ def K4200_class_update(**kwargs):
         setattr(Python_4200.K4200_test, name, value)
 
 
-def v_sliders(cv_test):
+def v_sliders(test):
     """
     ---------------------------------------------------------------------------
     FUNCTION: v_sliders
-    INPUTS: cv_test (Python_4200.cv_test)
+    INPUTS: test (Python_4200.test)
     RETURNS: widgets.Box
     DEPENDENCIES: IPython.html.widgets
     ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@ def v_sliders(cv_test):
     vend_slider.description = "End Voltage "
 
     voltage_sliders = widgets.interactive(
-        cv_test.set_vrange,
+        test.set_vrange,
         vstart=vstart_slider,
         vend=vend_slider,
         vstep=vstep_slider)
@@ -630,8 +630,10 @@ def boot_GUI():
             cf_test.run_test()
         elif cv_tabs.visible:
             cv_test.run_test()
+            Python_4200.K4200_test.last_test = "c"
         elif cf_tabs.visible:
             cf_test.run_test()
+            Python_4200.K4200_test.last_test = "c"
 
     start_button = widgets.Button(description="Run test")
     start_button.on_click(start_test)

@@ -37,6 +37,7 @@ class K4200_test(object):
     shutter_port = ""
     cust_name = ""
     run_all = False
+    last_test = "_"
 
     def __init__(self, label, speed, delay, mono_port, shutter_port, mode):
         self.label = label
@@ -162,7 +163,7 @@ class K4200_test(object):
         """
         if instrument == "K4200":
             self.k4200 = self.rm.open_resource(self.k4200_address)
-            ki4200.init_4200(1, self.k4200)
+            ki4200.init_4200(self.last_test not in self.mode, 1, self.k4200)
         elif instrument == "LS331":
             self.ls331 = self.rm.open_resource(self.ls331_address)
 
@@ -462,17 +463,7 @@ class cap_test(K4200_test):
             writer.writerows(data)
             csvfile.close()
 
-    def setup_test(self):
-        """
-        ------------------------------------------------------------------------
-        FUNCTION: setup_test
-        INPUTS: self
-        RETURNS: nothing
-        DEPENDENCIES: pyvisa/visa
-        ------------------------------------------------------------------------
-
-        ------------------------------------------------------------------------
-        """
+    def setup_graph(self):
         plt.clf()
         plt.close()
         plt.figure(
@@ -541,6 +532,20 @@ class cap_test(K4200_test):
 
         display.display(plt.gcf())
         display.clear_output(wait=True)
+        return ax1, ax2
+
+    def setup_test(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: setup_test
+        INPUTS: self
+        RETURNS: nothing
+        DEPENDENCIES: pyvisa/visa
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        ax1, ax2 = self.setup_graph()
 
         self.commands = [":CVU:RESET",
                          ":CVU:MODE 1",
@@ -585,6 +590,8 @@ class cap_test(K4200_test):
         display.clear_output(wait=True)
         date = datetime.now().strftime("%Y-%m-%d")
         time = datetime.now().strftime("%H.%M.%S")
+        imgname = ("data/" + date + "/" + time + "_" + self.mode + "_" +
+                   "multi" + self.cust_name + ".png")
 
         ax1, ax2, cm, sh = self.setup_test()
         self.prim = []
@@ -648,8 +655,7 @@ class cap_test(K4200_test):
                 xdata=self.wavelengths,
                 ydata=self.prim,
                 zdata=self.temp)
-            imgname = ("data/" + date + "/" + time + "_" + self.mode + "_" +
-                       "multi" + self.cust_name + ".png")
+
             plt.savefig(imgname)
             return 0
 
@@ -685,6 +691,7 @@ class cap_test(K4200_test):
 
             display.display(plt.gcf())
             display.clear_output(wait=True)
+            plt.savefig(imgname)
             return 0
 
 

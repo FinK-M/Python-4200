@@ -106,11 +106,11 @@ def rpm_switch(channel, mode, instrument):
             print("Service Request timed out")
 
 
-def init_4200(mode, instrument):
+def init_4200(rpm, mode, instrument):
     """
     ---------------------------------------------------------------------------
     FUNCTION: init_4200
-    INPUTS: mode, instrument (int)
+    INPUTS: rpm (bool), mode, instrument (int)
     RETURNS: nothing
     DEPENDENCIES: pyvisa/visa
     ---------------------------------------------------------------------------
@@ -122,9 +122,10 @@ def init_4200(mode, instrument):
     instrument.clear()
     # send srq when finished with task
     instrument.write('DR1')
-    # access the user library page
-    instrument.write('UL')
-    rpm_switch(1, mode, instrument)
-    rpm_switch(2, mode, instrument)
+    if rpm:
+        # access the user library page
+        instrument.write('UL')
+        rpm_switch(1, mode, instrument)
+        rpm_switch(2, mode, instrument)
     # clear the buffer
     instrument.write('BC')
