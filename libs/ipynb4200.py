@@ -479,6 +479,19 @@ def comps(cv_test):
     return comp_box
 
 
+def repeat_select(test):
+    one_to_ten = [str(i) for i in range(1, 11)]
+    repeat_menu = widgets.Dropdown(
+        options=one_to_ten,
+        value="3",
+        description="Repetitions")
+    repeat_menu.margin = 5
+    widgets.interactive(
+        test.set_repetitions,
+        repetitions=repeat_menu)
+    return repeat_menu
+
+
 def iv_test_params(test):
     compliance_select = widgets.BoundedFloatText(min=(-105), max=105)
     sig_fig_select = widgets.IntSlider(min=3, max=7, value=5)
@@ -536,6 +549,7 @@ def cap_test_params(test):
         test.set_length,
         length=length_menu)
 
+    repeat_menu = repeat_select(test)
     if test.mode == "cv":
         freq_num, freq_order = ac_freq(test)
         left_box = widgets.VBox(
@@ -544,13 +558,22 @@ def cap_test_params(test):
             width=330)
 
         right_box = widgets.VBox(
-            children=[freq_order, speed_menu],
+            children=[freq_order, speed_menu, repeat_menu],
             align="end",
             width=330)
         box = widgets.HBox(children=[left_box, right_box])
 
     elif test.mode == "cf":
-        box = widgets.VBox(children=[acz_range, speed_menu, length_menu])
+        left_box = widgets.VBox(
+            children=[acz_range, length_menu],
+            align="end",
+            width=330)
+
+        right_box = widgets.VBox(
+            children=[speed_menu, repeat_menu],
+            align="end",
+            width=330)
+        box = widgets.HBox(children=[left_box, right_box])
         box.align = "end"
 
     return widgets.VBox(children=[acv_slider, box, comp_box],

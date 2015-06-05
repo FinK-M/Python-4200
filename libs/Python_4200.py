@@ -47,6 +47,7 @@ class K4200_test(object):
         self.delay = delay
         self.mode = mode
         self.wait = wait
+        self.repetitions = 3
 
     def set_name(self, label=None):
         """
@@ -152,6 +153,9 @@ class K4200_test(object):
             self.k4200_address = address
         elif instrument == "LS331":
             self.ls331_address = address
+
+    def set_repetitions(self, repetitions):
+        self.repetitions = int(repetitions)
 
     def set_visa_instr(self, instrument):
         """
@@ -433,49 +437,73 @@ class K4200_test(object):
         self.sec = []
         self.yaxis = []
         self.temp = []
-        if self.wrange_set:
 
+        if self.wrange_set:
             sh.open()
             self.wavelengths = []
+
             for w in range(self.wstart, self.wend+1, self.wstep):
-                self.temp.append(
-                    float(self.ls331.query('KRDG?').replace('+', '')))
 
                 if self.wait > 0.5:
                     sh.close()
+
                 cm.command("goto", w)
                 sleep(self.wait)
+
                 if self.wait > 0.5:
                     sh.open()
-                if self.mode in ("cv, cf"):
-                    self.k4200.write(":CVU:TEST:RUN")
-                    self.k4200.wait_for_srq()
-                    self.k4200.write(':CVU:DATA:Z?')
-                    values = self.k4200.read(
-                        termination=",\r\n", encoding="utf-8")
-                    p, s = ki4200.CV_output_san(values)
 
-                    self.prim.append(p)
+                if self.mode in ("cv, cf"):
+                    data = []
+                    t = []
+
+                    for r in range(int(self.repetitions)):
+                        self.k4200.write(":CVU:TEST:RUN")
+                        self.k4200.wait_for_srq()
+                        self.k4200.write(':CVU:DATA:Z?')
+
+                        values = self.k4200.read(
+                            termination=",\r\n", encoding="utf-8")
+
+                        p, s = ki4200.CV_output_san(values)
+                        data.append(p)
+                        t.append(
+                            float(self.ls331.query('KRDG?').replace('+', '')))
+                    self.temp.append(sum(t)/len(t))
+                    avg = [sum(col) / len(col) for col in zip(*data)]
+                    self.prim.append(avg)
                     self.sec.append(s)
+
                 elif self.mode == "iv":
                     self.k4200.write("ME1")
                     self.k4200.wait_for_srq()
-                    data = [float(d) for d in
-                            re.sub('[N]', '',
-                                   self.k4200.query("DO 'IA'")).split(',')]
-                    self.prim.append(data)
-                self.wavelengths.append(w)
+                    data = []
+                    t = []
 
+                    for r in range(int(self.repetitions)):
+                        out = self.k4200.query("DO 'IA'")
+                        data.append([float(d) for d in re.sub(
+                            '[N]', '', out).split(',')])
+                        t.append(
+                            float(self.ls331.query('KRDG?').replace('+', '')))
+                    self.temp.append(sum(t)/len(t))
+                    avg = [sum(col) / len(col) for col in zip(*data)]
+                    self.prim.append(avg)
+
+                self.wavelengths.append(w)
                 self.y = (list(map(list, zip(*self.prim))))
                 i = 0
+
                 for line in self.y:
                     if w > self.wstart:
                         del(ax1.lines[-len(self.y)])
                         del(ax2.lines[-1])
+
                     if i < 7:
                         ax1.plot(self.wavelengths, line, colours[i])
                     else:
                         ax1.plot(self.wavelengths, line)
+
                     ax2.plot(self.wavelengths, self.temp, 'b-')
                     display.display(plt.gcf())
                     display.clear_output(wait=True)
@@ -509,19 +537,24 @@ class K4200_test(object):
             cm.close()
             sleep(1)
             sh.open()
-            if self.mode in ("cv", "cf"):
-                self.k4200.write(":CVU:TEST:RUN")
-                self.k4200.wait_for_srq()
-                self.k4200.write(':CVU:DATA:Z?')
-                values = self.k4200.read(
-                    termination=",\r\n", encoding="utf-8")
-                self.prim, self.sec = ki4200.CV_output_san(values)
-            else:
-                self.k4200.write("ME1")
-                self.k4200.wait_for_srq()
-                data = re.sub(
-                    '[N]', '', self.k4200.query("DO 'IA'")).split(',')
-                self.prim = ([float(d) for d in data])
+            data = []
+            for r in range(int(self.repetitions)):
+                if self.mode in ("cv", "cf"):
+                    self.k4200.write(":CVU:TEST:RUN")
+                    self.k4200.wait_for_srq()
+                    self.k4200.write(':CVU:DATA:Z?')
+                    values = self.k4200.read(
+                        termination=",\r\n", encoding="utf-8")
+                    d, sec = ki4200.CV_output_san(values)
+                    data.append(d)
+                else:
+                    self.k4200.write("ME1")
+                    self.k4200.wait_for_srq()
+                    out = self.k4200.query("DO 'IA'")
+                    data.append([float(d) for d in re.sub(
+                        '[N]', '', out).split(',')])
+            if int(self.repetitions) > 1:
+                self.prim = [sum(col) / len(col) for col in zip(*data)]
             if self.mode == "cv":
                 self.xaxis = ki4200.read_4200_x(':CVU:DATA:VOLT?', self.k4200)
             elif self.mode == "cf":

@@ -12,8 +12,8 @@ This module contains a single class (and demo) for controlling a simple Arduino
 shutter system. The system in question consists of a servo motor with a
 rectangular panel attached to it. The Arduino sets the servo to 90° when it
 recieves a serial '1', and 0° with serial '0'. The shutter will not move
-instantly and the methods have delays to reflect this, so take this into account
-if precise timings are needed.
+instantly and the methods have delays to reflect this, so take this into
+account if precise timings are needed.
 
 Example:
     >>import shutter.py

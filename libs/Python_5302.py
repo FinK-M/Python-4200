@@ -1,16 +1,6 @@
 import visa
 from time import sleep
-from Python_4200 import select_device
 
-
-def query_5302(query):
-    """
-    Simple query routine that adds short delay to allow
-    5302 LIA to respond to writen string.
-    """
-    instr.write(query)
-    sleep(0.05)
-    return instr.read()
 
 if __name__ == "__main__":
     try:
@@ -22,17 +12,17 @@ if __name__ == "__main__":
 
     # pass resource manager to device selection prompt
     # comment to set device without prompt
-    addr = select_device(rm)
+    # addr = select_device(rm)
 
     # addr = 'GPIB0::17::INSTR'
     # uncomment to set device without prompt
 
     # confirm address being used
-    print("Using device at", addr)
+    # print("Using device at", addr)
 
     # open visa resource at given address
     try:
-        instr = rm.open_resource(addr)
+        instr = rm.open_resource("GPIB0::12::INSTR")
     except:
         print("Error, cannot open resource")
         exit()
@@ -41,7 +31,11 @@ if __name__ == "__main__":
     display the intrument's reported ID. Note the commant 'ID' is
     specific to 5302 LIA. Others may use '*IDN?'.
     """
-    print(query_5302('ID'))
-    print(int(query_5302('FRQ'))/1000, 'KHz')
-    print(query_5302('VER'))
-    sleep(5)
+    print(instr.query('ID', delay=0.05))
+    while True:
+
+        freq = str(int(instr.query('FRQ', delay=0.05))/1000)
+        mag = str(int(instr.query('MAG', delay=0.05))/100)
+        pha = str(int(instr.query('PHA', delay=0.05))/1000)
+        print(freq + " Hz  " + mag + " %  " + pha)
+        sleep(.5)
