@@ -406,7 +406,7 @@ class K4200_test(object):
             self.k4200.write(c)
         self.set_visa_instr(instrument="LS331")
 
-        cm = cm110.setup_cm110(self.mono_port)
+        cm = cm110.mono(port=self.mono_port)
         sh = shutter.ard_shutter(port=self.shutter_port)
         return ax1, ax2, cm, sh
 
@@ -443,7 +443,7 @@ class K4200_test(object):
 
                 if self.wait > 0.5:
                     sh.close()
-                cm110.command(cm, "goto", w)
+                cm.command("goto", w)
                 sleep(self.wait)
                 if self.wait > 0.5:
                     sh.open()
@@ -505,7 +505,7 @@ class K4200_test(object):
             return 0
 
         else:
-            cm110.command(cm, "goto", self.single_w_val)
+            cm.command("goto", self.single_w_val)
             cm.close()
             sleep(1)
             sh.open()
