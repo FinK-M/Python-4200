@@ -34,11 +34,16 @@ class K4200_test(object):
     rm = visa.ResourceManager()
     ls331_address = "GPIB0::1::INSTR"
     k4200_address = "GPIB0::17::INSTR"
+    lia5302_address = "GPIB0::12::INSTR"
     mono_port = ""
     shutter_port = ""
     cust_name = ""
     run_all = False
     last_test = "_"
+    lia_freq = 0
+    lia_mag = 0
+    lia_pha = 0
+    running = False
 
     def __init__(self, label, speed, delay, mono_port,
                  shutter_port, mode, wait=0):
@@ -168,16 +173,38 @@ class K4200_test(object):
 
         ------------------------------------------------------------------------
         """
-        if instrument == "K4200":
+        if instrument.upper() == "K4200":
             self.k4200 = self.rm.open_resource(self.k4200_address)
+            try:
+                assert "KI4200" in self.k4200.query("ID")
+            except AssertionError:
+                self.k4200.close()
+                print("KI4200 not detected at given address")
+
             if self.mode == "iv":
                 switch = 3
             else:
                 switch = 1
+
             ki4200.init_4200(
                 self.last_test not in self.mode, switch, self.k4200)
-        elif instrument == "LS331":
+
+        elif instrument.upper() == "LS331":
             self.ls331 = self.rm.open_resource(self.ls331_address)
+            try:
+                assert "MODEL331S" in self.ls331.query("*IDN?")
+            except AssertionError:
+                self.ls331.close()
+                print("LS331 not detected at given address")
+
+        elif instrument.upper() == "LIA5302":
+            self.lia5302 = self.rm.open_resource(self.lia5302_address)
+            self.lia5302.query_delay = 0.05
+            try:
+                assert "5302" in self.lia5302.query("ID?")
+            except AssertionError:
+                self.lia5302.close()
+                print("5302LIA not detected at given address")
 
     def set_shutter_port(self, p):
         self.shutter_port = p
@@ -409,6 +436,7 @@ class K4200_test(object):
         for c in self.commands:
             self.k4200.write(c)
         self.set_visa_instr(instrument="LS331")
+        self.set_visa_instr(instrument="LIA5302")
 
         cm = cm110.mono(port=self.mono_port)
         sh = shutter.ard_shutter(port=self.shutter_port)
@@ -425,6 +453,7 @@ class K4200_test(object):
 
         ------------------------------------------------------------------------
         """
+        self.running = True
         colours = ["g", "b", "r", "c", "m", "y", "k"]
         display.clear_output(wait=True)
         date = datetime.now().strftime("%Y-%m-%d")
@@ -461,6 +490,9 @@ class K4200_test(object):
                         self.k4200.write(":CVU:TEST:RUN")
                         self.k4200.wait_for_srq()
                         self.k4200.write(':CVU:DATA:Z?')
+                        self.lia_freq = (int(self.lia5302.query('FRQ'))/1000)
+                        self.lia_mag = (int(self.lia5302.query('MAG'))/1000)
+                        self.lia_pha = (int(self.lia5302.query('PHA'))/1000)
 
                         values = self.k4200.read(
                             termination=",\r\n", encoding="utf-8")
@@ -486,6 +518,9 @@ class K4200_test(object):
                             '[N]', '', out).split(',')])
                         t.append(
                             float(self.ls331.query('KRDG?').replace('+', '')))
+                        self.lia_freq = (int(self.lia5302.query('FRQ'))/1000)
+                        self.lia_mag = (int(self.lia5302.query('MAG'))/100)
+                        self.lia_pha = (int(self.lia5302.query('PHA'))/1000)
                     self.temp.append(sum(t)/len(t))
                     avg = [sum(col) / len(col) for col in zip(*data)]
                     self.prim.append(avg)
@@ -530,6 +565,7 @@ class K4200_test(object):
                 zdata=self.temp)
 
             plt.savefig(imgname)
+            self.running = False
             return 0
 
         else:
@@ -576,6 +612,7 @@ class K4200_test(object):
             display.display(plt.gcf())
             display.clear_output(wait=True)
             plt.savefig(imgname)
+            self.running = False
             return 0
 
 

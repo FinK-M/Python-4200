@@ -23,6 +23,7 @@ if __name__ == "__main__":
     # open visa resource at given address
     try:
         instr = rm.open_resource("GPIB0::12::INSTR")
+        instr.query_delay = 0.05
     except:
         print("Error, cannot open resource")
         exit()
@@ -31,11 +32,11 @@ if __name__ == "__main__":
     display the intrument's reported ID. Note the commant 'ID' is
     specific to 5302 LIA. Others may use '*IDN?'.
     """
-    print(instr.query('ID', delay=0.05))
+    print(instr.query('ID'))
     while True:
 
-        freq = str(int(instr.query('FRQ', delay=0.05))/1000)
-        mag = str(int(instr.query('MAG', delay=0.05))/100)
-        pha = str(int(instr.query('PHA', delay=0.05))/1000)
+        freq = str(int(instr.query('FRQ'))/1000)
+        mag = str(int(instr.query('MAG'))/100)
+        pha = str(int(instr.query('PHA'))/1000)
         print(freq + " Hz  " + mag + " %  " + pha)
         sleep(.5)
