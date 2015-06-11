@@ -1,7 +1,7 @@
 import serial
 from IPython.html import widgets
 from IPython.display import display
-import threading
+from threading import Timer
 from datetime import datetime
 from libs import Python_4200
 from time import sleep
@@ -35,41 +35,70 @@ def v_sliders(test):
     which is then returned.
     ---------------------------------------------------------------------------
     """
-    if test.mode in ("cv", "cf"):
-        vstep_select = widgets.FloatSlider(min=0.1, max=2, step=0.1, value=1)
-        vstart_select = widgets.IntSlider(min=-30, max=30, value=0)
-        vend_select = widgets.IntSlider(min=-30, max=30, value=5)
+    if test.mode == "cv":
+        vstep_select = widgets.BoundedFloatText(min=0.01, max=5, value=1)
+        vstart_select = widgets.BoundedIntText(min=-30, max=30, value=-5)
+        vend_select = widgets.BoundedIntText(min=-30, max=30, value=5)
+        vsingle_select = widgets.BoundedFloatText(min=-30, max=30, value=0)
+        description = widgets.HTML(value="""
+        <h3>Capacitance-Voltage sweep configuration</h3>
+        <p>Start and end voltages can be between -30.00V and 30.00V.</p>
+        <p>Step voltage can be between 0.01V and 5V.</p>
+        """)
     elif test.mode == "iv":
         vstep_select = widgets.BoundedFloatText(min=0.01, max=10, value=1)
         vstart_select = widgets.BoundedIntText(min=-30, max=30, value=0)
         vend_select = widgets.BoundedIntText(min=-30, max=30, value=5)
-        vstep_select.margin = 10
-        vstart_select.margin = 10
-        vend_select.margin = 10
+        vsingle_select = widgets.BoundedFloatText(min=-30, max=30, value=0)
         description = widgets.HTML(value="""
-        <h3>SMU Voltage sweep configuration</h3>
+        <h3>Current-Voltage sweep configuration</h3>
         <p>Start and end voltages can be between -210.00V and 210.00V.</p>
-        <p>Step voltage can also be anywhere in this range, although should
-        be less than half the overall voltage range.</p>
+        <p>Step voltage can also be anywhere in this range.</p>
         """)
+    vstep_select.margin = 10
+    vstart_select.margin = 10
+    vend_select.margin = 10
+    vsingle_select.margin = 10
 
     vstep_select.description = "Step"
     vstart_select.description = "Start"
     vend_select.description = "End"
+    vsingle_select.description = "Voltage"
+    single_box = widgets.VBox(children=[vsingle_select], height=150)
+    single_box.visible = False
 
-    voltage_select = widgets.interactive(
+    widgets.interactive(
         test.set_vrange,
         vstart=vstart_select,
         vend=vend_select,
         vstep=vstep_select)
-    if test.mode in ("cv", "cf"):
-        return widgets.Box(children=[voltage_select],
-                           height=200)
-    else:
-        selectors = widgets.VBox(
-            children=[vstart_select, vstep_select, vend_select],
-            align="start")
-        return widgets.HBox(children=[selectors, description])
+    widgets.interactive(
+        test.set_single_v,
+        v=vsingle_select)
+
+    selectors = widgets.VBox(
+        children=[vstart_select, vstep_select, vend_select],
+        align="start",
+        height=150)
+
+    def one_or_many(value):
+        if value:
+            single_box.visible = True
+            selectors.visible = False
+            test.vrange_set = False
+        else:
+            single_box.visible = False
+            selectors.visible = True
+            test.vrange_set = True
+
+    single_v = widgets.Checkbox(description="Single Voltage?", value=False)
+    single_v.margin = 10
+    widgets.interactive(one_or_many, value=single_v)
+    if test.mode == "iv":
+        single_v.visible = False
+
+    return widgets.HBox(
+        children=[selectors, single_box, description, single_v])
 
 
 def w_sliders(cv_test):
@@ -408,7 +437,7 @@ def ac_freq(test):
 
         freq_nums = widgets.VBox(children=[freq_num, freq_num2])
         freq_nums.align = "end"
-        freq_ords = widgets.VBox(children=[freq_order2, freq_order2])
+        freq_ords = widgets.VBox(children=[freq_order, freq_order2])
         freq_ords.align = "end"
         return widgets.HBox(children=[freq_nums, freq_ords])
 
@@ -602,17 +631,19 @@ def custom_name(test):
 
     time = widgets.HTML(value="")
     time.margin = 10
+    """
     live = widgets.HTML(
-        value="""<p><b>Freq:</b> 0Hz</p>
+        value=("<p><b>Freq:</b> 0Hz</p>
                  <p><b>Mag:</b> 0%</p>
-                 <p><b>Phase:</b> 0°</p>""")
+                 <p><b>Phase:</b> 0°</p>")
     live.margin = 10
     live.visible = False
-
+    """
     def update():
         time.value = (
             "<b>Filename: </b>" + datetime.now().strftime("%H.%M.%S") +
             "_" + test.mode + test.cust_name + ".csv")
+        """
         try:
             if test.running:
                 live.value = ("<p><b>Freq: </b>"
@@ -622,21 +653,20 @@ def custom_name(test):
                               + "<p><b>Phase: </b>"
                               + str(test.lia_pha) + "°</p>")
             else:
-                """
+
                 lia_freq = (int(test.lia5302.query('FRQ'))/1000)
                 lia_mag = (int(test.lia5302.query('MAG'))/100)
                 lia_pha = (int(test.lia5302.query('PHA'))/1000)
                 live.value = ("<p><b>Freq: </b>" + str(lia_freq) + "Hz</p>" +
                               "<p><b>Mag: </b>" + str(lia_mag) + "%</p>" +
                               "<p><b>Phase: </b>" + str(lia_pha) + "°</p>")
-                """
-                pass
         except:
             pass
-        threading.Timer(.1, update).start()
+        """
+        Timer(.1, update).start()
     update()
 
-    return widgets.Box(children=[descriptor, name_input, time]), live
+    return widgets.Box(children=[descriptor, name_input, time])  # , live
 
 
 def boot_GUI():
@@ -658,9 +688,9 @@ def boot_GUI():
     iv_test = Python_4200.iv_test("test")
 
     page5, offline_mode = equipment_config()
-    cv_page6, cv_live = custom_name(cv_test)
-    cf_page6, cf_live = custom_name(cf_test)
-    iv_page6, iv_live = custom_name(iv_test)
+    cv_page6 = custom_name(cv_test)
+    cf_page6 = custom_name(cf_test)
+    iv_page6 = custom_name(iv_test)
     cv_pages = [v_sliders(cv_test),
                 w_sliders(cv_test),
                 delays(cv_test),
@@ -711,11 +741,11 @@ def boot_GUI():
         tabs.set_title(4, 'Equipment Configuration')
         tabs.set_title(5, 'Path')
     cv_tabs.visible = True
-    cv_live.visible = False
+    # cv_live.visible = True
     cf_tabs.visible = False
-    cf_live.visible = False
+    # cf_live.visible = False
     iv_tabs.visible = False
-    iv_live.visble = False
+    # iv_live.visble = False
 
     oneall_tick = widgets.Checkbox(
         description="Run All?")
@@ -733,33 +763,33 @@ def boot_GUI():
     def visible_tabs(mode):
         if mode == "CV":
             cv_tabs.visible = True
-            cv_live.visible = True
+            # cv_live.visible = True
             cf_tabs.visible = False
-            cf_live.visible = False
+            # cf_live.visible = False
             iv_tabs.visible = False
-            iv_live.visble = False
+            # iv_live.visble = False
 
         elif mode == "CF":
             cv_tabs.visible = False
-            cv_live.visible = False
+            # cv_live.visible = False
             cf_tabs.visible = True
-            cf_live.visible = True
+            # cf_live.visible = True
             iv_tabs.visible = False
-            iv_live.visble = False
+            # iv_live.visble = False
 
         elif mode == "IV":
             cv_tabs.visible = False
-            cv_live.visible = False
+            # cv_live.visible = False
             cf_tabs.visible = False
-            cf_live.visible = False
+            # cf_live.visible = False
             iv_tabs.visible = True
-            iv_live.visble = True
+            # iv_live.visble = True
 
     widgets.interactive(
         visible_tabs,
         mode=select_types)
 
-    def start_test():
+    def start_test(name):
         if Python_4200.K4200_test.run_all:
             cv_test.run_test()
             Python_4200.K4200_test.last_test = "c"
@@ -779,18 +809,18 @@ def boot_GUI():
             iv_test.run_test()
             Python_4200.K4200_test.last_test = "iv"
 
+    """
     def start_thread(name):
         t = threading.Thread(target=start_test)
         t.start()
-
+    """
     start_button = widgets.Button(description="Run test")
-    start_button.on_click(start_thread)
+    start_button.on_click(start_test)
     start_button.margin = 20
     if not offline_mode:
         top = widgets.HBox(
-            children=[
-                select_types, oneall_tick, start_button,
-                cv_live, cf_live, iv_live])
+            children=[select_types, oneall_tick, start_button])
+        # cv_live, cf_live, iv_live])
         display(top, cv_tabs, cf_tabs, iv_tabs)
     else:
         display(select_types, cv_tabs, cf_tabs, iv_tabs)
