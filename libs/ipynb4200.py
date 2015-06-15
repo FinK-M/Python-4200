@@ -522,7 +522,7 @@ def repeat_select(test):
 
 
 def iv_test_params(test):
-    compliance_select = widgets.BoundedFloatText(min=(-105), max=105)
+    compliance_select = widgets.BoundedFloatText(min=-105, max=105, value=100)
     sig_fig_select = widgets.IntSlider(min=3, max=7, value=5)
     widgets.interactive(
         test.set_compliance,
@@ -631,38 +631,11 @@ def custom_name(test):
 
     time = widgets.HTML(value="")
     time.margin = 10
-    """
-    live = widgets.HTML(
-        value=("<p><b>Freq:</b> 0Hz</p>
-                 <p><b>Mag:</b> 0%</p>
-                 <p><b>Phase:</b> 0°</p>")
-    live.margin = 10
-    live.visible = False
-    """
+
     def update():
         time.value = (
             "<b>Filename: </b>" + datetime.now().strftime("%H.%M.%S") +
             "_" + test.mode + test.cust_name + ".csv")
-        """
-        try:
-            if test.running:
-                live.value = ("<p><b>Freq: </b>"
-                              + str(test.lia_freq) + "Hz</p>"
-                              + "<p><b>Mag: </b>"
-                              + str(test.lia_mag) + "%</p>"
-                              + "<p><b>Phase: </b>"
-                              + str(test.lia_pha) + "°</p>")
-            else:
-
-                lia_freq = (int(test.lia5302.query('FRQ'))/1000)
-                lia_mag = (int(test.lia5302.query('MAG'))/100)
-                lia_pha = (int(test.lia5302.query('PHA'))/1000)
-                live.value = ("<p><b>Freq: </b>" + str(lia_freq) + "Hz</p>" +
-                              "<p><b>Mag: </b>" + str(lia_mag) + "%</p>" +
-                              "<p><b>Phase: </b>" + str(lia_pha) + "°</p>")
-        except:
-            pass
-        """
         Timer(.1, update).start()
     update()
 
@@ -741,11 +714,8 @@ def boot_GUI():
         tabs.set_title(4, 'Equipment Configuration')
         tabs.set_title(5, 'Path')
     cv_tabs.visible = True
-    # cv_live.visible = True
     cf_tabs.visible = False
-    # cf_live.visible = False
     iv_tabs.visible = False
-    # iv_live.visble = False
 
     oneall_tick = widgets.Checkbox(
         description="Run All?")
@@ -763,27 +733,18 @@ def boot_GUI():
     def visible_tabs(mode):
         if mode == "CV":
             cv_tabs.visible = True
-            # cv_live.visible = True
             cf_tabs.visible = False
-            # cf_live.visible = False
             iv_tabs.visible = False
-            # iv_live.visble = False
 
         elif mode == "CF":
             cv_tabs.visible = False
-            # cv_live.visible = False
             cf_tabs.visible = True
-            # cf_live.visible = True
             iv_tabs.visible = False
-            # iv_live.visble = False
 
         elif mode == "IV":
             cv_tabs.visible = False
-            # cv_live.visible = False
             cf_tabs.visible = False
-            # cf_live.visible = False
             iv_tabs.visible = True
-            # iv_live.visble = True
 
     widgets.interactive(
         visible_tabs,
@@ -809,18 +770,12 @@ def boot_GUI():
             iv_test.run_test()
             Python_4200.K4200_test.last_test = "iv"
 
-    """
-    def start_thread(name):
-        t = threading.Thread(target=start_test)
-        t.start()
-    """
     start_button = widgets.Button(description="Run test")
     start_button.on_click(start_test)
     start_button.margin = 20
     if not offline_mode:
         top = widgets.HBox(
             children=[select_types, oneall_tick, start_button])
-        # cv_live, cf_live, iv_live])
         display(top, cv_tabs, cf_tabs, iv_tabs)
     else:
         display(select_types, cv_tabs, cf_tabs, iv_tabs)

@@ -6,7 +6,6 @@ from libs import cm110
 from libs import ki4200
 from libs import shutter
 from datetime import datetime
-from decimal import Decimal
 from IPython import display
 from math import log10, floor
 from time import sleep
@@ -256,62 +255,7 @@ class K4200_test(object):
     def set_single_w(self, w):
         self.single_w_val = w
 
-    def save_to_csv(self, xdata, ydata, zdata=None):
-
-        if self.mode in ("cv", "iv"):
-            if self.wrange_set:
-                header = ["Wavelength (A)"]
-                for v in self.yaxis:
-                    header.append(str(v) + "V")
-                data = []
-                for i in range(len(ydata)):
-                    if self.vrange_set:
-                        ydata[i].insert(0, xdata[i])
-                        ydata[i].append(zdata[i])
-                        data = ydata
-                    else:
-                        data.append([xdata[i], ydata[i], zdata[i]])
-                if not self.vrange_set:
-                    header.append("Capacitance (F)")
-                header.append("Temperature (K)")
-            else:
-                if self.mode == "cv":
-                    header = ["Voltage", "Capacitance"]
-                else:
-                    header = ["Voltage", "Current"]
-                data = ([[xdata[i], ydata[i]] for i in range(len(xdata))])
-
-        elif self.mode == 'cf':
-            if self.wrange_set:
-                header = ["wavelength"]
-                for f in self.yaxis:
-                    header.append(str(f) + "Hz")
-                header.append("Temperature (K)")
-                for i in range(len(ydata)):
-                    ydata[i].insert(0, xdata[i])
-                    ydata[i].append(zdata[i])
-                data = ydata
-            else:
-                header = ["Frequency", "Capacitance"]
-                data = [[xdata[i], ydata[i]] for i in range(len(xdata))]
-
-        self.folder = path.join(getcwd(), "data/" + self.date)
-        if not path.exists(self.folder):
-            makedirs(self.folder)
-
-        self.filename = self.time + "_" + self.mode + "_"
-        if self.wrange_set:
-            self.filename += "multi" + self.cust_name + ".csv"
-        else:
-            self.filename += "single" + self.cust_name + ".csv"
-        self.final_path = path.join(self.folder, self.filename)
-        with open(self.final_path, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(header)
-            writer.writerows(data)
-            csvfile.close()
-
-    def save_to_csv_2(self, x_name, y_name, x, y, **kwargs):
+    def save_to_csv(self, x_name, y_name, x, y, **kwargs):
         header = [x_name]
         data = []
         if isinstance(y[0], list):
@@ -339,10 +283,8 @@ class K4200_test(object):
             makedirs(self.folder)
 
         self.filename = self.time + "_" + self.mode + "_"
-        if self.wrange_set:
-            self.filename += "multi" + self.cust_name + ".csv"
-        else:
-            self.filename += "single" + self.cust_name + ".csv"
+        t_type = "multi" if self.wrange_set else "single"
+        self.filename += t_type + self.cust_name + ".csv"
         self.final_path = path.join(self.folder, self.filename)
 
         with open(self.final_path, 'w', newline='') as csvfile:
@@ -545,6 +487,98 @@ class K4200_test(object):
             ax1 = self.setup_graph()
             return ax1, cm, sh
 
+    def cv_no_v(self):
+        data = []
+        t = []
+        mag = []
+        pha = []
+        for r in range(int(self.repetitions)):
+            self.k4200.write(":CVU:TEST:RUN")
+            self.k4200.wait_for_srq()
+            self.k4200.write(':CVU:DATA:Z?')
+            self.lia_freq = (float(self.lia5302.query('FRQ'))/1000)
+            mag.append(float(self.lia5302.query('MAG'))/100)
+            pha.append(float(self.lia5302.query('PHA'))/1000)
+            values = self.k4200.read(termination=",\r\n", encoding="utf-8")
+            p, s = ki4200.CV_output_san(values)
+            data.append(p)
+            t.append(float(self.ls331.query('KRDG?').replace('+', '')))
+        self.mag.append(sum(mag)/len(mag))
+        self.pha.append(sum(pha)/len(pha))
+        self.temp.append(sum(t)/len(t))
+        avg = [sum(col) / len(col) for col in zip(*data)]
+        self.prim.append(avg)
+        self.sec.append(s)
+
+    def cv_v(self):
+        data = []
+        t = []
+        mag = []
+        pha = []
+        for r in range(int(self.repetitions)):
+            data.append(
+                float(self.k4200.query(":CVU:MEASZ?").split(',').pop(0)))
+            mag.append(float(self.lia5302.query('MAG'))/100)
+            pha.append(float(self.lia5302.query('PHA'))/1000)
+            t.append(float(self.ls331.query('KRDG?').replace('+', '')))
+        self.mag.append(sum(mag)/len(mag))
+        self.pha.append(sum(pha)/len(pha))
+        self.temp.append(sum(t)/len(t))
+        if int(self.repetitions) > 1:
+            self.prim.append(sum(data)/len(data))
+
+    def iv(self):
+        data = []
+        t = []
+        mag = []
+        pha = []
+        for r in range(int(self.repetitions)):
+            self.k4200.write("ME1")
+            self.k4200.wait_for_srq(timeout=None)
+            out = self.k4200.query("DO 'IA'")
+            data.append([float(d) for d in sub(
+                '[N]', '', out).split(',')])
+            t.append(
+                float(self.ls331.query('KRDG?').replace('+', '')))
+            self.lia_freq = (int(self.lia5302.query('FRQ'))/1000)
+            self.lia_mag = (int(self.lia5302.query('MAG'))/100)
+            self.lia_pha = (int(self.lia5302.query('PHA'))/1000)
+            mag.append(self.lia_mag)
+            pha.append(self.lia_pha)
+        self.mag.append(sum(mag)/len(mag))
+        self.pha.append(sum(pha)/len(pha))
+        self.temp.append(sum(t)/len(t))
+        avg = [sum(col) / len(col) for col in zip(*data)]
+        self.prim.append(avg)
+
+    def re_plot(self, w):
+        colours = ["g", "b", "r", "c", "m", "y", "k"]
+        if w > self.wstart:
+            del(self.ax2.lines[-1])
+            del(self.ax3.lines[-1])
+            del(self.ax4.lines[-1])
+        self.ax2.plot(self.wavelengths, self.temp, 'b-')
+        self.ax3.plot(self.wavelengths, self.mag, 'r-')
+        self.ax4.plot(self.wavelengths, self.pha, 'g-')
+        if self.vrange_set or self.mode == "cf":
+            self.y = (list(map(list, zip(*self.prim))))
+            i = 0
+            for line in self.y:
+                if w > self.wstart:
+                    del(self.ax1.lines[-len(self.y)])
+                if i < 7:
+                    self.ax1.plot(self.wavelengths, line, colours[i])
+                else:
+                    self.ax1.plot(self.wavelengths, line)
+                i += 1
+        else:
+            if w > self.wstart:
+                del(self.ax1.lines[-1])
+            self.ax1.plot(self.wavelengths, self.prim, 'b-')
+
+        display.display(plt.gcf())
+        display.clear_output(wait=True)
+
     def run_test(self):
         """
         ------------------------------------------------------------------------
@@ -557,19 +591,15 @@ class K4200_test(object):
         ------------------------------------------------------------------------
         """
         self.running = True
-        colours = ["g", "b", "r", "c", "m", "y", "k"]
         display.clear_output(wait=True)
         self.date = datetime.now().strftime("%Y-%m-%d")
         self.time = datetime.now().strftime("%H.%M.%S")
-        if self.wrange_set:
-            imgname = ("data/" + self.date + "/" + self.time + "_" + self.mode
-                       + "_" + "multi" + self.cust_name + ".png")
-        else:
-            imgname = ("data/" + self.date + "/" + self.time + "_" + self.mode
-                       + "_" + "single" + self.cust_name + ".png")
+        t_type = "multi" if self.wrange_set else "single"
+        imgname = ("data/" + self.date + "/" + self.time + "_" + self.mode
+                   + "_" + t_type + self.cust_name + ".png")
 
         if self.wrange_set:
-            ax1, ax2, ax3, ax4, cm, sh = self.setup_test()
+            self.ax1, self.ax2, self.ax3, self.ax4, cm, sh = self.setup_test()
         else:
             ax1, cm, sh = self.setup_test()
         self.prim = []
@@ -585,104 +615,21 @@ class K4200_test(object):
 
             for w in range(self.wstart, self.wend+1, self.wstep):
 
-                if self.wait > 0.5:
-                    sh.close()
-
+                self.wait > 0.5 and sh.close()
                 cm.command("goto", w)
                 sleep(self.wait)
+                self.wait > 0.5 and sh.open()
 
-                if self.wait > 0.5:
-                    sh.open()
-                data = []
-                t = []
-                mag = []
-                pha = []
                 if self.mode in ("cv, cf"):
                     if not (self.mode == "cv" and not self.vrange_set):
-                        for r in range(int(self.repetitions)):
-                            self.k4200.write(":CVU:TEST:RUN")
-                            self.k4200.wait_for_srq()
-                            self.k4200.write(':CVU:DATA:Z?')
-                            self.lia_freq = (
-                                float(self.lia5302.query('FRQ'))/1000)
-                            mag.append(float(self.lia5302.query('MAG'))/100)
-                            pha.append(float(self.lia5302.query('PHA'))/1000)
-                            values = self.k4200.read(
-                                termination=",\r\n", encoding="utf-8")
-
-                            p, s = ki4200.CV_output_san(values)
-                            data.append(p)
-                            t.append(
-                                float(self.ls331.query(
-                                    'KRDG?').replace('+', '')))
-                        self.mag.append(sum(mag)/len(mag))
-                        self.pha.append(sum(pha)/len(pha))
-                        self.temp.append(sum(t)/len(t))
-                        avg = [sum(col) / len(col) for col in zip(*data)]
-                        self.prim.append(avg)
-                        self.sec.append(s)
+                        self.cv_no_v()
                     else:
-                        for r in range(int(self.repetitions)):
-                            data.append(float(self.k4200.query(
-                                        ":CVU:MEASZ?").split(',').pop(0)))
-                            mag.append(float(self.lia5302.query('MAG'))/100)
-                            pha.append(float(self.lia5302.query('PHA'))/1000)
-                            t.append(
-                                float(self.ls331.query(
-                                    'KRDG?').replace('+', '')))
-                        self.mag.append(sum(mag)/len(mag))
-                        self.pha.append(sum(pha)/len(pha))
-                        self.temp.append(sum(t)/len(t))
-                        if int(self.repetitions) > 1:
-                            self.prim.append(sum(data)/len(data))
-
+                        self.cv_v()
                 elif self.mode == "iv":
-
-                    for r in range(int(self.repetitions)):
-                        self.k4200.write("ME1")
-                        self.k4200.wait_for_srq(timeout=None)
-                        out = self.k4200.query("DO 'IA'")
-                        data.append([float(d) for d in sub(
-                            '[N]', '', out).split(',')])
-                        t.append(
-                            float(self.ls331.query('KRDG?').replace('+', '')))
-                        self.lia_freq = (int(self.lia5302.query('FRQ'))/1000)
-                        self.lia_mag = (int(self.lia5302.query('MAG'))/100)
-                        self.lia_pha = (int(self.lia5302.query('PHA'))/1000)
-                        mag.append(self.lia_mag)
-                        pha.append(self.lia_pha)
-                    self.mag.append(sum(mag)/len(mag))
-                    self.pha.append(sum(pha)/len(pha))
-                    self.temp.append(sum(t)/len(t))
-                    avg = [sum(col) / len(col) for col in zip(*data)]
-                    self.prim.append(avg)
+                    self.iv()
 
                 self.wavelengths.append(w)
-                if w > self.wstart:
-                    del(ax2.lines[-1])
-                    del(ax3.lines[-1])
-                    del(ax4.lines[-1])
-                ax2.plot(self.wavelengths, self.temp, 'b-')
-                ax3.plot(self.wavelengths, self.mag, 'r-')
-                ax4.plot(self.wavelengths, self.pha, 'g-')
-                if self.vrange_set or self.mode == "cf":
-                    self.y = (list(map(list, zip(*self.prim))))
-                    i = 0
-                    for line in self.y:
-                        if w > self.wstart:
-                            del(ax1.lines[-len(self.y)])
-                        if i < 7:
-                            ax1.plot(self.wavelengths, line, colours[i])
-                        else:
-                            ax1.plot(self.wavelengths, line)
-                        i += 1
-                else:
-                    if w > self.wstart:
-                        del(ax1.lines[-1])
-                    ax1.plot(self.wavelengths, self.prim, 'b-')
-
-                display.display(plt.gcf())
-                display.clear_output(wait=True)
+                self.re_plot(w)
 
             cm.close()
             sh.close()
@@ -696,15 +643,7 @@ class K4200_test(object):
                 self.yaxis = sub('[N]',
                                  '', self.k4200.query("DO 'VA'")).split(',')
             self.k4200.close()
-            """
             self.save_to_csv(
-                date=date,
-                time=time,
-                xdata=self.wavelengths,
-                ydata=self.prim,
-                zdata=self.temp)
-            """
-            self.save_to_csv_2(
                 x_name="Wavelengths (A)", x=self.wavelengths,
                 y_name="Voltage (V)", y=self.prim,
                 temperature=self.temp,
@@ -756,7 +695,7 @@ class K4200_test(object):
             sh.close()
             sh.shutdown()
 
-            self.save_to_csv_2(
+            self.save_to_csv(
                 x_name=xname, x=self.wavelengths,
                 y_name=yname, y=self.prim)
 
@@ -1045,7 +984,6 @@ class cv_test(cap_test):
         self.freq = '%.0E' % freq
 
 
-
 class cf_test(cap_test):
 
     """
@@ -1175,8 +1113,11 @@ class iv_test(K4200_test):
         self.min_cur = str(num) + order
 
     def set_compliance(self, compliance):
-        c = Decimal(compliance)/Decimal(1000)
-        self.compliance = c.normalize().to_eng_string()
+        if compliance == 0:
+            self.compliance = 0
+        else:
+            compliance = compliance/1000
+            self.compliance = '%.0E' % compliance
 
     def set_sig_fig(self, sig_fig):
         self.sig_fig = sig_fig
@@ -1338,6 +1279,61 @@ def test_type():
         except ValueError:
             print("Invalid selection")
 
+
+def save_to_csv_old(self, xdata, ydata, zdata=None):
+
+    if self.mode in ("cv", "iv"):
+        if self.wrange_set:
+            header = ["Wavelength (A)"]
+            for v in self.yaxis:
+                header.append(str(v) + "V")
+            data = []
+            for i in range(len(ydata)):
+                if self.vrange_set:
+                    ydata[i].insert(0, xdata[i])
+                    ydata[i].append(zdata[i])
+                    data = ydata
+                else:
+                    data.append([xdata[i], ydata[i], zdata[i]])
+            if not self.vrange_set:
+                header.append("Capacitance (F)")
+            header.append("Temperature (K)")
+        else:
+            if self.mode == "cv":
+                header = ["Voltage", "Capacitance"]
+            else:
+                header = ["Voltage", "Current"]
+            data = ([[xdata[i], ydata[i]] for i in range(len(xdata))])
+
+    elif self.mode == 'cf':
+        if self.wrange_set:
+            header = ["wavelength"]
+            for f in self.yaxis:
+                header.append(str(f) + "Hz")
+            header.append("Temperature (K)")
+            for i in range(len(ydata)):
+                ydata[i].insert(0, xdata[i])
+                ydata[i].append(zdata[i])
+            data = ydata
+        else:
+            header = ["Frequency", "Capacitance"]
+            data = [[xdata[i], ydata[i]] for i in range(len(xdata))]
+
+    self.folder = path.join(getcwd(), "data/" + self.date)
+    if not path.exists(self.folder):
+        makedirs(self.folder)
+
+    self.filename = self.time + "_" + self.mode + "_"
+    if self.wrange_set:
+        self.filename += "multi" + self.cust_name + ".csv"
+    else:
+        self.filename += "single" + self.cust_name + ".csv"
+    self.final_path = path.join(self.folder, self.filename)
+    with open(self.final_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(header)
+        writer.writerows(data)
+        csvfile.close()
 
 # If running this library, print doc string for all functions
 if __name__ == "__main__":
