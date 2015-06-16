@@ -234,12 +234,21 @@ def visa_selector():
         LS331_select.value = "GPIB0::1::INSTR"
     LS331_select.margin = 5
 
+    LIA5302_select = widgets.Dropdown(
+        options=result,
+        description="5302 LIA address")
+    if "GPIB0::12::INSTR" in result:
+        LIA5302_select.value = "GPIB0::12::INSTR"
+    LIA5302_select.margin = 5
+
     if visa_okay:
         widgets.interactive(
             K4200_class_update,
             k4200_address=K4200_select,
-            ls331_address=LS331_select)
-        visa_select = widgets.VBox(children=[K4200_select, LS331_select])
+            ls331_address=LS331_select,
+            lia5302_address=LIA5302_select)
+        visa_select = widgets.VBox(
+            children=[K4200_select, LS331_select, LIA5302_select])
         visa_select.align = "end"
         visa_select.margin = 10
     return visa_okay, visa_select
