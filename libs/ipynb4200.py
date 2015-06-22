@@ -211,7 +211,7 @@ def delays(test):
     return widgets.Box(children=[wait_text, set_wait, delay_text, set_delay])
 
 
-def visa_selector():
+def visa_selector(test):
     resources = Python_4200.K4200_test.rm.list_resources()
     if len(resources) == 0:
         visa_okay = False
@@ -223,22 +223,22 @@ def visa_selector():
     K4200_select = widgets.Dropdown(
         options=result,
         description="4200 SCS address")
-    if "GPIB0::17::INSTR" in result:
-        K4200_select.value = "GPIB0::17::INSTR"
+    # if "GPIB0::17::INSTR" in result:
+    K4200_select.value = test.k4200_address
     K4200_select.margin = 5
 
     LS331_select = widgets.Dropdown(
         options=result,
         description="LS 331 address")
-    if "GPIB0::1::INSTR" in result:
-        LS331_select.value = "GPIB0::1::INSTR"
+    # if "GPIB0::1::INSTR" in result:
+    LS331_select.value = test.ls331_address
     LS331_select.margin = 5
 
     LIA5302_select = widgets.Dropdown(
         options=result,
         description="5302 LIA address")
-    if "GPIB0::12::INSTR" in result:
-        LIA5302_select.value = "GPIB0::12::INSTR"
+    # if "GPIB0::12::INSTR" in result:
+    LIA5302_select.value = test.lia5302_address
     LIA5302_select.margin = 5
 
     if visa_okay:
@@ -319,6 +319,7 @@ def com_selectors():
         description="Arduino Shutter port",
         value=default)
     ard_com_select.margin = 5
+
     K4200_class_update(
         mono_port="COM1",
         shutter_port=default)
@@ -334,7 +335,7 @@ def com_selectors():
     return com_select, com_okay
 
 
-def equipment_config():
+def equipment_config(test):
     """
     ---------------------------------------------------------------------------
     FUNCTION: equipment_config
@@ -349,7 +350,7 @@ def equipment_config():
     ---------------------------------------------------------------------------
     """
     left_wrapper, com_okay = com_selectors()
-    visa_okay, right_wrapper = visa_selector()
+    visa_okay, right_wrapper = visa_selector(test)
     offline_mode = not (com_okay and visa_okay)
 
     menu_wrapper = widgets.HBox(children=[left_wrapper, right_wrapper])
@@ -668,8 +669,9 @@ def boot_GUI():
     cv_test = Python_4200.cv_test("test")
     cf_test = Python_4200.cf_test("test")
     iv_test = Python_4200.iv_test("test")
+    cv_test.visa_discovery()
 
-    page5, offline_mode = equipment_config()
+    page5, offline_mode = equipment_config(cv_test)
     cv_page6 = custom_name(cv_test)
     cf_page6 = custom_name(cf_test)
     iv_page6 = custom_name(iv_test)

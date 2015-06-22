@@ -11,6 +11,7 @@ from math import log10, floor
 from time import sleep
 from os import path, getcwd, makedirs
 from re import sub
+from gc import get_referrers
 
 
 class K4200_test(object):
@@ -162,6 +163,44 @@ class K4200_test(object):
     def set_repetitions(self, repetitions):
         self.repetitions = int(repetitions)
 
+    def visa_discovery(self):
+        all_resources = self.rm.list_resources()
+        visa_resources = [i for i in all_resources if "ASRL" not in i]
+        names = ['MODEL331S',
+                 'MODEL 2440',
+                 '34970A',
+                 '5302',
+                 'KI4200',
+                 'HP6634A']
+        queries = ['ID?', '*IDN?', 'ID']
+        self.instrs = {}
+        for address in visa_resources:
+            try:
+                instr = self.rm.open_resource(address)
+                instr.timeout = 4
+                instr.clear()
+                sleep(0.3)
+            except:
+                print("error1")
+            for q in queries:
+                try:
+                    temp = instr.query(q, delay=0.05).strip('\n\r')
+                    break
+                except:
+                    pass
+            for name in names:
+                if name in temp:
+                    self.instrs[name] = address
+            instr.close()
+        for instance in ((obj for obj in get_referrers(self.__class__)
+                          if isinstance(obj, self.__class__))):
+            instance.k4200_address = self.instrs['KI4200']
+            instance.ls331_address = self.instrs['MODEL331S']
+            instance.lia5302_address = self.instrs['5302']
+            instance.k4200 = self.rm.open_resource(self.k4200_address)
+            instance.ls331 = self.rm.open_resource(self.ls331_address)
+            instance.lia5302 = self.rm.open_resource(self.lia5302_address)
+
     def set_visa_instr(self, instrument):
         """
         ------------------------------------------------------------------------
@@ -255,6 +294,15 @@ class K4200_test(object):
     def set_single_w(self, w):
         self.single_w_val = w
 
+    def set_path(self):
+        self.folder = path.join(getcwd(), "data/" + self.date)
+        if not path.exists(self.folder):
+            makedirs(self.folder)
+        self.filename = self.time + "_" + self.mode + "_"
+        t_type = "multi" if self.wrange_set else "single"
+        self.filename += t_type + self.cust_name + ".csv"
+        self.final_path = path.join(self.folder, self.filename)
+
     def save_to_csv(self, x_name, y_name, x, y, **kwargs):
         header = [x_name]
         data = []
@@ -278,15 +326,7 @@ class K4200_test(object):
                 header.append(name)
                 data.append(value)
 
-        self.folder = path.join(getcwd(), "data/" + self.date)
-        if not path.exists(self.folder):
-            makedirs(self.folder)
-
-        self.filename = self.time + "_" + self.mode + "_"
-        t_type = "multi" if self.wrange_set else "single"
-        self.filename += t_type + self.cust_name + ".csv"
-        self.final_path = path.join(self.folder, self.filename)
-
+        self.set_path()
         with open(self.final_path, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(header)
@@ -477,6 +517,7 @@ class K4200_test(object):
             self.k4200.write(c)
         self.set_visa_instr(instrument="LS331")
         self.set_visa_instr(instrument="LIA5302")
+        self.ls331.timeout = 0.1
 
         cm = cm110.mono(port=self.mono_port)
         sh = shutter.ard_shutter(port=self.shutter_port)
@@ -502,7 +543,10 @@ class K4200_test(object):
             values = self.k4200.read(termination=",\r\n", encoding="utf-8")
             p, s = ki4200.CV_output_san(values)
             data.append(p)
-            t.append(float(self.ls331.query('KRDG?').replace('+', '')))
+            try:
+                t.append(float(self.ls331.query('KRDG?').replace('+', '')))
+            except:
+                t.append(0)
         self.mag.append(sum(mag)/len(mag))
         self.pha.append(sum(pha)/len(pha))
         self.temp.append(sum(t)/len(t))
@@ -520,7 +564,10 @@ class K4200_test(object):
                 float(self.k4200.query(":CVU:MEASZ?").split(',').pop(0)))
             mag.append(float(self.lia5302.query('MAG'))/100)
             pha.append(float(self.lia5302.query('PHA'))/1000)
-            t.append(float(self.ls331.query('KRDG?').replace('+', '')))
+            try:
+                t.append(float(self.ls331.query('KRDG?').replace('+', '')))
+            except:
+                t.append(0)
         self.mag.append(sum(mag)/len(mag))
         self.pha.append(sum(pha)/len(pha))
         self.temp.append(sum(t)/len(t))
@@ -538,8 +585,10 @@ class K4200_test(object):
             out = self.k4200.query("DO 'IA'")
             data.append([float(d) for d in sub(
                 '[N]', '', out).split(',')])
-            t.append(
-                float(self.ls331.query('KRDG?').replace('+', '')))
+            try:
+                t.append(float(self.ls331.query('KRDG?').replace('+', '')))
+            except:
+                t.append(0)
             self.lia_freq = (int(self.lia5302.query('FRQ'))/1000)
             self.lia_mag = (int(self.lia5302.query('MAG'))/100)
             self.lia_pha = (int(self.lia5302.query('PHA'))/1000)
