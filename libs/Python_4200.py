@@ -173,25 +173,31 @@ class K4200_test(object):
                  'KI4200',
                  'HP6634A']
         queries = ['ID?', '*IDN?', 'ID']
-        self.instrs = {}
-        for address in visa_resources:
-            try:
-                instr = self.rm.open_resource(address)
-                instr.timeout = 4
-                instr.clear()
-                sleep(0.3)
-            except:
-                print("error1")
-            for q in queries:
+
+        while True:
+            self.instrs = {}
+            for address in visa_resources:
                 try:
-                    temp = instr.query(q, delay=0.05).strip('\n\r')
-                    break
+                    instr = self.rm.open_resource(address)
+                    instr.timeout = 4
+                    instr.clear()
+                    sleep(0.3)
                 except:
-                    pass
-            for name in names:
-                if name in temp:
-                    self.instrs[name] = address
-            instr.close()
+                    print("error1")
+                for q in queries:
+                    try:
+                        temp = instr.query(q, delay=0.05).strip('\n\r')
+                        break
+                    except:
+                        pass
+                for name in names:
+                    if name in temp:
+                        self.instrs[name] = address
+                instr.close()
+            if 'KI4200' in self.instrs.keys():
+                break
+            else:
+                sleep(1)
         for instance in ((obj for obj in get_referrers(self.__class__)
                           if isinstance(obj, self.__class__))):
             instance.k4200_address = self.instrs['KI4200']
@@ -515,14 +521,15 @@ class K4200_test(object):
         self.set_visa_instr(instrument="K4200")
         for c in self.commands:
             self.k4200.write(c)
-        self.set_visa_instr(instrument="LS331")
+
         self.set_visa_instr(instrument="LIA5302")
-        self.ls331.timeout = 0.1
 
         cm = cm110.mono(port=self.mono_port)
         sh = shutter.ard_shutter(port=self.shutter_port)
         if self.wrange_set:
             ax1, ax2, ax3, ax4 = self.setup_graph()
+            self.set_visa_instr(instrument="LS331")
+            self.ls331.timeout = 0.1
             return ax1, ax2, ax3, ax4, cm, sh
         else:
             ax1 = self.setup_graph()
@@ -720,7 +727,7 @@ class K4200_test(object):
                     data.append(d)
                 else:
                     self.k4200.write("ME1")
-                    self.k4200.wait_for_srq()
+                    self.k4200.wait_for_srq(timeout=None)
                     out = self.k4200.query("DO 'IA'")
                     data.append([float(d) for d in sub(
                         '[N]', '', out).split(',')])
@@ -745,7 +752,7 @@ class K4200_test(object):
             sh.shutdown()
 
             self.save_to_csv(
-                x_name=xname, x=self.wavelengths,
+                x_name=xname, x=self.xaxis,
                 y_name=yname, y=self.prim)
 
             display.display(plt.gcf())
