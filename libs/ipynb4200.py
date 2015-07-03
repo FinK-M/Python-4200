@@ -254,46 +254,7 @@ def visa_selector(test):
     return visa_okay, visa_select
 
 
-def com_discovery():
-    """
-    ---------------------------------------------------------------------------
-    FUNCTION: com_discovery
-    INPUTS: None
-    RETURNS: offline_mode (bool)
-             result, default (str)
-    DEPENDENCIES: serial
-    ---------------------------------------------------------------------------
-    Generates a list of all possible windows COM ports then generates a list of
-    which ones are available. Also takes a guess as to which one the Arduino
-    shutter is connected to (usually higher number ports). If none are
-    available sets the "off-line mode" flag so GUI can still run on other PCs
-    ---------------------------------------------------------------------------
-    """
-    ports = ['COM' + str(i + 1) for i in range(256)]
-    result = []
-    for port in ports:
-        try:
-            s = serial.Serial(port)
-            s.close()
-            result.append(port)
-        except (OSError, serial.SerialException):
-            pass
-    com_okay = True
-    if len(result) == 0:
-        result.append("No Ports")
-        default = "No Ports"
-        com_okay = False
-    elif "COM12" in result:
-        default = "COM12"
-    elif "COM13" in result:
-        default = "COM13"
-    else:
-        default = "COM1"
-
-    return com_okay, result, default
-
-
-def com_selectors():
+def com_selectors(test, *args):
     """
     ---------------------------------------------------------------------------
     FUNCTION: com_selectors
@@ -307,32 +268,41 @@ def com_selectors():
     forwards the off-line mode variable.
     ---------------------------------------------------------------------------
     """
-    com_okay, result, default = com_discovery()
-
+    test.com_discovery()
     mono_com_select = widgets.Dropdown(
-        options=result,
+        options=test.result,
         description="Monochromator port")
     mono_com_select.margin = 5
 
     ard_com_select = widgets.Dropdown(
-        options=result,
+        options=test.result,
         description="Arduino Shutter port",
-        value=default)
+        value=test.ard_default)
     ard_com_select.margin = 5
 
     K4200_class_update(
         mono_port="COM1",
-        shutter_port=default)
+        shutter_port=test.ard_default)
     widgets.interactive(
         K4200_class_update,
         mono_port=mono_com_select,
         shutter_port=ard_com_select)
 
-    com_select = widgets.VBox(children=[mono_com_select, ard_com_select])
+    def update(name):
+        test.com_discovery()
+        mono_com_select.options = test.result
+        ard_com_select.options = test.result
+        ard_com_select.value = test.ard_default
+    re_check = widgets.Button(description="Update")
+    re_check.on_click(update)
+    re_check.margin = 5
+
+    com_select = widgets.VBox(
+        children=[re_check, mono_com_select, ard_com_select])
     com_select.align = "end"
     com_select.margin = 10
 
-    return com_select, com_okay
+    return com_select, test.com_okay
 
 
 def equipment_config(test):
@@ -349,11 +319,12 @@ def equipment_config(test):
     and adds a white border. Then returns this Vbox
     ---------------------------------------------------------------------------
     """
-    left_wrapper, com_okay = com_selectors()
+    left_wrapper, com_okay = com_selectors(test)
     visa_okay, right_wrapper = visa_selector(test)
     offline_mode = not (com_okay and visa_okay)
 
-    menu_wrapper = widgets.HBox(children=[left_wrapper, right_wrapper])
+    menu_wrapper = widgets.HBox(
+        children=[widgets.VBox(children=[left_wrapper]), right_wrapper])
     menu_wrapper.align = "center"
 
     return widgets.VBox(children=[menu_wrapper],

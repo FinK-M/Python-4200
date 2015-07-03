@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
 import csv
 import visa
+import serial
 
 from libs import cm110
 from libs import ki4200
 from libs import shutter
+from serial.tools import list_ports
 from datetime import datetime
 from IPython import display
 from math import log10, floor
@@ -162,6 +164,63 @@ class K4200_test(object):
 
     def set_repetitions(self, repetitions):
         self.repetitions = int(repetitions)
+
+    def com_discovery(self, *args):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: com_discovery
+        INPUTS: None
+        RETURNS: offline_mode (bool)
+                 result, default (str)
+        DEPENDENCIES: serial
+        ------------------------------------------------------------------------
+        Generates a list of all possible windows COM ports then generates a
+        list of which ones are available. Also takes a guess as to which one
+        theArduino shutter is connected to (usually higher number ports). If
+        none are available sets the "off-line mode" flag so GUI can still run
+        on other PCs
+        ------------------------------------------------------------------------
+        """
+        self.com_okay = False
+        self.ard_default = "Offline"
+        self.mono_default = "Offline"
+        self.result = ["Offline"]
+        com_ports = list(list_ports.comports())
+
+        if not com_ports:
+            self.result = ["No Ports"]
+            self.ard_default = "No Ports"
+            self.mono_default = "No Ports"
+            self.com_okay = False
+        else:
+            self.result = []
+            for port in com_ports:
+                self.result.append(port[0])
+                if "Arduino" in port[1]:
+                    self.com_okay = True
+                    self.ard_default = port[0]
+
+                else:
+                    try:
+                        ser = serial.Serial(port[0])
+                        ser.write(b'27')
+                        sleep(0.1)
+                        if ser.read(ser.inWaiting()) == b'\xa2\x18':
+                            self.mono_default = port[0]
+                        ser.close()
+                    except:
+                        pass
+
+            if not self.com_okay:
+                self.result.append("No Shutter")
+                self.ard_default = "No Shutter"
+
+        for instance in ((obj for obj in get_referrers(self.__class__)
+                          if isinstance(obj, self.__class__))):
+            instance.result = self.result
+            instance.com_okay = self.com_okay
+            instance.ard_default = self.ard_default
+            instance.mono_default = self.mono_default
 
     def visa_discovery(self):
         all_resources = self.rm.list_resources()
@@ -352,11 +411,20 @@ class K4200_test(object):
         ax2 = None
         if self.wrange_set:
             ax1 = plt.subplot(221)
-            ax1.minorticks_on()
-            ax1.grid(b=True, which='major', color='#6C7A89')
-            ax1.grid(b=True, which='minor', color='#D2D7D3')
+            ax2 = plt.subplot(222)
+            ax3 = plt.subplot(223)
+            ax4 = plt.subplot(224)
+            axes = [ax1, ax2, ax3, ax4]
+            for axis in axes:
+                axis.minorticks_on()
+                axis.grid(b=True, which='major', color='#6C7A89')
+                axis.grid(b=True, which='minor', color='#D2D7D3')
+                axis.set_xlabel("Wavelength (Angstoms)", fontsize=14)
+
             if self.mode == "cv":
                 if self.vrange_set:
+                    title = "CVW sweep"
+                    ylabel = "Capacitance (F)"
                     ax1.set_title(
                         "CVW sweep",
                         fontsize=20,
@@ -381,39 +449,20 @@ class K4200_test(object):
                     family="serif")
                 ax1.set_ylabel("Current (A)", fontsize=14)
 
-            ax1.set_xlabel("Wavelength (Angstoms)", fontsize=14)
-
-            ax2 = plt.subplot(222)
-            ax2.minorticks_on()
-            ax2.grid(b=True, which='major', color='#6C7A89')
-            ax2.grid(b=True, which='minor', color='#D2D7D3')
             ax2.set_title(
                 "Temperature",
                 fontsize=20,
                 family="serif")
-            ax2.set_xlabel("Wavelength (Angstoms)", fontsize=14)
             ax2.set_ylabel("Temperature (C)", fontsize=14)
-
-            ax3 = plt.subplot(223)
-            ax3.minorticks_on()
-            ax3.grid(b=True, which='major', color='#6C7A89')
-            ax3.grid(b=True, which='minor', color='#D2D7D3')
             ax3.set_title(
                 "Magnitude",
                 fontsize=20,
                 family="serif")
-            ax3.set_xlabel("Wavelength (Angstoms)", fontsize=14)
             ax3.set_ylabel("Magnitude (%)", fontsize=14)
-
-            ax4 = plt.subplot(224)
-            ax4.minorticks_on()
-            ax4.grid(b=True, which='major', color='#6C7A89')
-            ax4.grid(b=True, which='minor', color='#D2D7D3')
             ax4.set_title(
                 "Phase",
                 fontsize=20,
                 family="serif")
-            ax4.set_xlabel("Wavelength (Angstoms)", fontsize=14)
             ax4.set_ylabel("Phase (°)", fontsize=14)
 
             ax1.plot()

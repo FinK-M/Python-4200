@@ -54,6 +54,10 @@ void loop()
         myservo.write(90);
         Serial.println("Closed");
       }
+      else if (p == 'q')
+      {
+        Serial.println("Shutter");
+      }
       last_p = p;
     }
     delay(50);
