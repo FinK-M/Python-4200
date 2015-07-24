@@ -1,5 +1,4 @@
 from decimal import Decimal
-import visa
 
 
 def CV_output_san(values):
@@ -52,7 +51,7 @@ def read_4200_x(read_command, instrument):
     """
     ---------------------------------------------------------------------------
     FUNCTION: read_4200_x
-    INPUTS: read_command (str)
+    INPUTS: read_command (str), instrument (visa resource)
     RETURNS: x (float list)
     DEPENDENCIES: pyvisa/visa
     ---------------------------------------------------------------------------
@@ -67,8 +66,10 @@ def read_4200_x(read_command, instrument):
     """
     ok_commands = [':CVU:DATA:VOLT?', ':CVU:DATA:FREQ?',
                    ':CVU:DATA:STATUS?', ':CVU:DATA:TSTAMP?']
-    if read_command not in ok_commands:
-        raise ValueError('Incorrect read command passed')
+    try:
+        assert(read_command in ok_commands)
+    except AssertionError:
+        print('Incorrect read command passed')
 
     instrument.write(read_command)
     data = instrument.read(termination=",\r\n", encoding="utf-8").split(",")
@@ -93,7 +94,8 @@ def rpm_switch(channel, mode, instrument):
     ---------------------------------------------------------------------------
     """
     running = True
-    while running:
+    count = 0
+    while running and count <= 3:
         try:
             # run script to switch RPM1 to CVU mode
             instrument.write('EX pmuulib kxci_rpm_switch('
@@ -104,6 +106,7 @@ def rpm_switch(channel, mode, instrument):
             running = False
         except:
             print("Service Request timed out")
+            count += 1
 
 
 def init_4200(rpm, mode, instrument):
@@ -118,7 +121,7 @@ def init_4200(rpm, mode, instrument):
     when RPM modules are attached. See function above for RPM modes.
     ---------------------------------------------------------------------------
     """
-    # clear the visa resource buffers
+    # clear the visa resource
     instrument.clear()
     # send srq when finished with task
     instrument.write('DR1')

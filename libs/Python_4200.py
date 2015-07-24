@@ -7,13 +7,11 @@ from libs import cm110
 from libs import ki4200
 from libs import shutter
 from serial.tools import list_ports
-from datetime import datetime
 from IPython import display
 from math import log10, floor
-from time import sleep
+from time import sleep, strftime
 from os import path, getcwd, makedirs
 from re import sub
-from gc import get_referrers
 
 
 class K4200_test(object):
@@ -48,13 +46,9 @@ class K4200_test(object):
     lia_pha = 0
     running = False
 
-    def __init__(self, label, speed, delay, mono_port,
-                 shutter_port, mode, wait=0):
-        self.label = label
-        self.speed = speed
-        self.delay = delay
-        self.mode = mode
-        self.wait = wait
+    def __init__(self, **kwargs):
+        for name, value in kwargs.items():
+            self.name = value
         self.repetitions = 3
 
     def set_name(self, label=None):
@@ -68,9 +62,9 @@ class K4200_test(object):
 
         ------------------------------------------------------------------------
         """
-        if type(label) == str:
-            self.label = label
-        else:
+        try:
+            self.label = str(label)
+        except:
             while True:
                 try:
                     self.label = str(input("Enter test label: "))
@@ -157,13 +151,17 @@ class K4200_test(object):
                     print("Please enter valid wait time")
 
     def set_address(self, instrument, address):
+        print("This method has been depreciated, use auto discovery")
         if instrument == "K4200":
             self.k4200_address = address
         elif instrument == "LS331":
             self.ls331_address = address
 
     def set_repetitions(self, repetitions):
-        self.repetitions = int(repetitions)
+        try:
+            self.repetitions = int(repetitions)
+        except:
+            self.repetitions = int(input("Enter No. or repetitions: "))
 
     def com_discovery(self, *args):
         """
@@ -174,57 +172,48 @@ class K4200_test(object):
                  result, default (str)
         DEPENDENCIES: serial
         ------------------------------------------------------------------------
-        Generates a list of all possible windows COM ports then generates a
-        list of which ones are available. Also takes a guess as to which one
-        theArduino shutter is connected to (usually higher number ports). If
-        none are available sets the "off-line mode" flag so GUI can still run
-        on other PCs
+        CHANGE THIS
         ------------------------------------------------------------------------
         """
-        self.com_okay = False
-        self.ard_default = "Offline"
-        self.mono_default = "Offline"
-        self.result = ["Offline"]
+        K4200_test.com_okay = False
+        K4200_test.ard_default = "Offline"
+        K4200_test.mono_default = "Offline"
+        K4200_test.result = ["Offline"]
         com_ports = list(list_ports.comports())
 
         if not com_ports:
-            self.result = ["No Ports"]
-            self.ard_default = "No Ports"
-            self.mono_default = "No Ports"
-            self.com_okay = False
+            K4200_test.result = ["No Ports"]
+            K4200_test.ard_default = "No Ports"
+            K4200_test.mono_default = "No Ports"
+            K4200_test.com_okay = False
         else:
-            self.result = []
+            K4200_test.result = []
             for port in com_ports:
-                self.result.append(port[0])
+                K4200_test.result.append(port[0])
                 if "Arduino" in port[1]:
-                    self.com_okay = True
-                    self.ard_default = port[0]
+                    K4200_test.com_okay = True
+                    K4200_test.ard_default = port[0]
 
                 else:
                     try:
                         ser = serial.Serial(port[0])
                         ser.write(b'27')
                         sleep(0.1)
+                        # Can't decode this, but only CM110 will reply this way
                         if ser.read(ser.inWaiting()) == b'\xa2\x18':
-                            self.mono_default = port[0]
+                            K4200_test.mono_default = port[0]
                         ser.close()
                     except:
                         pass
 
-            if not self.com_okay:
-                self.result.append("No Shutter")
-                self.ard_default = "No Shutter"
-
-        for instance in ((obj for obj in get_referrers(self.__class__)
-                          if isinstance(obj, self.__class__))):
-            instance.result = self.result
-            instance.com_okay = self.com_okay
-            instance.ard_default = self.ard_default
-            instance.mono_default = self.mono_default
+            if not K4200_test.com_okay:
+                K4200_test.result.append("No Shutter")
+                K4200_test.ard_default = "No Shutter"
 
     def visa_discovery(self):
-        all_resources = self.rm.list_resources()
-        visa_resources = [i for i in all_resources if "ASRL" not in i]
+        all_resources = K4200_test.rm.list_resources()
+        K4200_test.visa_resources = (
+            [i for i in all_resources if "ASRL" not in i])
         names = ['MODEL331S',
                  'MODEL 2440',
                  '34970A',
@@ -232,39 +221,40 @@ class K4200_test(object):
                  'KI4200',
                  'HP6634A']
         queries = ['ID?', '*IDN?', 'ID']
-
-        while True:
-            self.instrs = {}
-            for address in visa_resources:
-                try:
-                    instr = self.rm.open_resource(address)
-                    instr.timeout = 4
-                    instr.clear()
-                    sleep(0.3)
-                except:
-                    print("error1")
-                for q in queries:
+        K4200_test.visa_okay = True
+        if K4200_test.visa_resources:
+            while True:
+                K4200_test.instrs = {}
+                for address in K4200_test.visa_resources:
                     try:
-                        temp = instr.query(q, delay=0.05).strip('\n\r')
-                        break
+                        instr = K4200_test.rm.open_resource(address)
+                        instr.timeout = 4
+                        instr.clear()
+                        sleep(0.3)
                     except:
-                        pass
-                for name in names:
-                    if name in temp:
-                        self.instrs[name] = address
-                instr.close()
-            if 'KI4200' in self.instrs.keys():
-                break
-            else:
-                sleep(1)
-        for instance in ((obj for obj in get_referrers(self.__class__)
-                          if isinstance(obj, self.__class__))):
-            instance.k4200_address = self.instrs['KI4200']
-            instance.ls331_address = self.instrs['MODEL331S']
-            instance.lia5302_address = self.instrs['5302']
-            instance.k4200 = self.rm.open_resource(self.k4200_address)
-            instance.ls331 = self.rm.open_resource(self.ls331_address)
-            instance.lia5302 = self.rm.open_resource(self.lia5302_address)
+                        print("Could not open resource")
+                        continue
+                    for q in queries:
+                        try:
+                            temp = instr.query(q, delay=0.05).strip('\n\r')
+                            break
+                        except:
+                            pass
+                    for name in names:
+                        if name in temp:
+                            K4200_test.instrs[name] = address
+                    instr.close()
+                if 'KI4200' in K4200_test.instrs.keys():
+                    break
+                else:
+                    sleep(1)
+        else:
+            K4200_test.visa_okay = False
+            K4200_test.visa_resources = ["No resources"]
+            K4200_test.instrs = {}
+            K4200_test.instrs['KI4200'] = "No resources"
+            K4200_test.instrs['MODEL331S'] = "No resources"
+            K4200_test.instrs['5302'] = "No resources"
 
     def set_visa_instr(self, instrument):
         """
@@ -311,10 +301,10 @@ class K4200_test(object):
                 print("5302LIA not detected at given address")
 
     def set_shutter_port(self, p):
-        self.shutter_port = p
+        K4200_test.shutter_port = p
 
     def set_mono_port(self, p):
-        self.mono_port = p
+        K4200_test.mono_port = p
 
     def set_custom_name(self, name):
         if name == "":
@@ -322,6 +312,25 @@ class K4200_test(object):
         else:
             self.cust_name = (sub('[\/:*?"<>| ]', '',
                                   "_" + str(name)).rstrip())
+
+    def step_check(self, start, end, step):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: step_check
+        INPUTS: self, start, end, step (float or int)
+        RETURNS: [start, end, step](float or int list)
+        DEPENDENCIES: none
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        if step > abs(end - start) or end == start:
+            raise ValueError
+        elif (end - start < 0 and step > 0) or (end - start > 0 and step < 0):
+            step = - step
+            return [start, end, step]
+        else:
+            return [start, end, step]
 
     def set_wavelengths(self, wstart=None, wend=None, wstep=None):
         """
@@ -697,8 +706,8 @@ class K4200_test(object):
         """
         self.running = True
         display.clear_output(wait=True)
-        self.date = datetime.now().strftime("%Y-%m-%d")
-        self.time = datetime.now().strftime("%H.%M.%S")
+        self.date = strftime("%Y-%m-%d")
+        self.time = strftime("%H.%M.%S")
         t_type = "multi" if self.wrange_set else "single"
         imgname = ("data/" + self.date + "/" + self.time + "_" + self.mode
                    + "_" + t_type + self.cust_name + ".png")
@@ -987,25 +996,6 @@ class cap_test(K4200_test):
                 except ValueError:
                     print("Please enter valid voltage")
 
-    def step_check(self, start, end, step):
-        """
-        ------------------------------------------------------------------------
-        FUNCTION: step_check
-        INPUTS: self, start, end, step (float or int)
-        RETURNS: [start, end, step](float or int list)
-        DEPENDENCIES: none
-        ------------------------------------------------------------------------
-
-        ------------------------------------------------------------------------
-        """
-        if step > abs(end - start):
-            raise ValueError
-        elif (end - start < 0 and step > 0) or (end - start > 0 and step < 0):
-            step = - step
-            return [start, end, step]
-        else:
-            return [start, end, step]
-
     def set_comps(self, open, short, load):
         self.comps = (str(int(open)) + "," + str(int(short)) +
                       "," + str(int(load)))
@@ -1045,6 +1035,7 @@ class cv_test(cap_test):
         self.vstep = 1
         self.freq = freq
         self.single_v = 0
+        self.mode = "cv"
         cap_test.__init__(self, label=label, mode="cv", model=model,
                           speed=speed, acv=acv/1000, length=length,
                           dcvsoak=dcvsoak, mono_port=mono_port,
@@ -1122,6 +1113,7 @@ class cf_test(cap_test):
         self.wait = wait
         self.fstart = fstart
         self.fstop = fstop
+        self.mode = "cf"
         cap_test.__init__(self, label=label, mode="cf", model=model,
                           speed=speed, acv=acv/1000, length=length,
                           dcvsoak=dcvsoak, mono_port=mono_port,
@@ -1206,6 +1198,7 @@ class iv_test(K4200_test):
         self.min_cur = "1E-3"
         self.repetitions = 1
         self.vrange_set = False
+        self.mode = "iv"
         K4200_test.__init__(
             self, label=label, speed=speed, delay=delay, mono_port=mono_port,
             shutter_port=shutter_port, mode="iv", wait=wait)
@@ -1226,25 +1219,6 @@ class iv_test(K4200_test):
 
     def set_sig_fig(self, sig_fig):
         self.sig_fig = sig_fig
-
-    def step_check(self, start, end, step):
-        """
-        ------------------------------------------------------------------------
-        FUNCTION: step_check
-        INPUTS: self, start, end, step (float or int)
-        RETURNS: [start, end, step](float or int list)
-        DEPENDENCIES: none
-        ------------------------------------------------------------------------
-
-        ------------------------------------------------------------------------
-        """
-        if step > abs(end - start):
-            raise ValueError
-        elif (end - start < 0 and step > 0) or (end - start > 0 and step < 0):
-            step = - step
-            return [start, end, step]
-        else:
-            return [start, end, step]
 
     def set_vrange(self, vstart=None, vend=None, vstep=None):
         """
