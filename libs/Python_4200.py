@@ -419,66 +419,45 @@ class K4200_test(object):
 
         ax2 = None
         if self.wrange_set:
-            ax1 = plt.subplot(221)
-            ax2 = plt.subplot(222)
-            ax3 = plt.subplot(223)
-            ax4 = plt.subplot(224)
-            axes = [ax1, ax2, ax3, ax4]
-            for axis in axes:
-                axis.minorticks_on()
-                axis.grid(b=True, which='major', color='#6C7A89')
-                axis.grid(b=True, which='minor', color='#D2D7D3')
-                axis.set_xlabel("Wavelength (Angstoms)", fontsize=14)
 
+            ylabel = "Capacitance (F)"
             if self.mode == "cv":
                 if self.vrange_set:
                     title = "CVW sweep"
-                    ylabel = "Capacitance (F)"
-                    ax1.set_title(
-                        "CVW sweep",
-                        fontsize=20,
-                        family="serif")
-                    ax1.set_ylabel("Capacitance (F)", fontsize=14)
                 else:
-                    ax1.set_title(
-                        "CW sweep at " + str(self.single_v) + " Volts",
-                        fontsize=20,
-                        family="serif")
-                    ax1.set_ylabel("Capacitance (F)", fontsize=14)
+                    title = "CW sweep at " + str(self.single_v) + " Volts"
             elif self.mode == "cf":
-                ax1.set_title(
-                    "CFW sweep",
-                    fontsize=20,
-                    family="serif")
-                ax1.set_ylabel("Capacitance (F)", fontsize=14)
+                title = "CFW sweep"
             elif self.mode == "iv":
-                ax1.set_title(
-                    "IV sweep",
-                    fontsize=20,
-                    family="serif")
-                ax1.set_ylabel("Current (A)", fontsize=14)
+                ylabel = "Current (A)"
+                title = "IV sweep"
 
-            ax2.set_title(
-                "Temperature",
-                fontsize=20,
-                family="serif")
-            ax2.set_ylabel("Temperature (C)", fontsize=14)
-            ax3.set_title(
-                "Magnitude",
-                fontsize=20,
-                family="serif")
-            ax3.set_ylabel("Magnitude (%)", fontsize=14)
-            ax4.set_title(
-                "Phase",
-                fontsize=20,
-                family="serif")
-            ax4.set_ylabel("Phase (°)", fontsize=14)
+            ax1 = plt.subplot(221)
+            ax1.set_title(title)
+            ax1.set_ylabel(ylabel)
 
-            ax1.plot()
-            ax2.plot()
-            ax3.plot()
-            ax4.plot()
-            ax4.set_ylim([-90, 0])
+            ax2 = plt.subplot(222)
+            ax2.set_title("Temperature")
+            ax2.set_ylabel("Temperature (C)")
+
+            ax3 = plt.subplot(223)
+            ax3.set_title("Magnitude")
+            ax3.set_ylabel("Magnitude (%)")
+
+            ax4 = plt.subplot(224)
+            ax4.set_title("Phase")
+            ax4.set_ylabel("Phase (°)")
+
+            for ax in [ax1, ax2, ax3, ax4]:
+                ax.minorticks_on()
+                ax.grid(b=True, which='major', color='#6C7A89')
+                ax.grid(b=True, which='minor', color='#D2D7D3')
+                ax.set_xlabel("Wavelength (Angstoms)", fontsize=14)
+                ax.set_title(fontsize=20, family="serif")
+                ax.set_ylabel(fontsize=14)
+                ax.plot()
+
+            ax4.set_ylim([-180, 0])
             plt.tight_layout(h_pad=1.0)
 
             display.display(plt.gcf())
