@@ -369,6 +369,16 @@ class K4200_test(object):
         self.single_w_val = w
 
     def set_path(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
         self.folder = path.join(getcwd(), "data/" + self.date)
         if not path.exists(self.folder):
             makedirs(self.folder)
@@ -378,6 +388,16 @@ class K4200_test(object):
         self.final_path = path.join(self.folder, self.filename)
 
     def save_to_csv(self, x_name, y_name, x, y, **kwargs):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
         header = [x_name]
         data = []
         if isinstance(y[0], list):
@@ -407,7 +427,105 @@ class K4200_test(object):
             writer.writerows(zip(*data))
             csvfile.close()
 
+    def multi_graph(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        ylabel = "Capacitance (F)"
+        if self.mode == "cv":
+            if self.vrange_set:
+                title = "CVW sweep"
+            else:
+                title = "CW sweep at {0} Volts".format(self.single_v)
+        elif self.mode == "cf":
+            title = "CFW sweep"
+        elif self.mode == "iv":
+            ylabel = "Current (A)"
+            title = "IV sweep"
+
+        ylabels = [ylabel, "Temperature (C)",
+                   "Magnitude (%)", "Phase (°)"]
+        titles = [title, "Temperature", "Magnitude", "Phase"]
+
+        axes = []
+        for i in range(4):
+            axes.append(plt.subplot(221+i))
+
+            axes[i].set_title(titles[i], fontsize=20, family="serif")
+            axes[i].set_ylabel(ylabels[i], fontsize=14)
+            axes[i].set_xlabel("Wavelength (Angstoms)", fontsize=14)
+
+            axes[i].minorticks_on()
+            axes[i].grid(b=True, which='major', color='#6C7A89')
+            axes[i].grid(b=True, which='minor', color='#D2D7D3')
+
+            axes[i].plot()
+
+        axes[3].set_ylim([-180, 0])
+        plt.tight_layout(h_pad=1.0)
+
+        display.display(plt.gcf())
+        display.clear_output(wait=True)
+        self.axes = axes
+        return 0
+
+    def single_graph(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        ax = plt.subplot(111)
+
+        ax.minorticks_on()
+        ax.grid(b=True, which='major', color='#6C7A89')
+        ax.grid(b=True, which='minor', color='#D2D7D3')
+
+        ax.set_xlabel("Voltage (V)", fontsize=14)
+        ax.set_ylabel("Capacitance (F)", fontsize=14)
+        ax.set_title(
+            "{0} sweep at {1} nm".format(
+                self.mode.upper(),
+                self.single_w_val/10),
+            fontsize=20,
+            family="serif")
+
+        if self.mode == "cv":
+            ax.plot()
+        elif self.mode == "cf":
+            ax.set_xlabel("Frequency (Hz)")
+            ax.semilogx()
+        elif self.mode == "iv":
+            ax.set_ylabel("Current (A)")
+            ax.plot()
+        display.display(plt.gcf())
+        display.clear_output(wait=True)
+        self.ax = ax
+        return 1
+
     def setup_graph(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
         plt.clf()
         plt.close()
         plt.figure(
@@ -417,86 +535,88 @@ class K4200_test(object):
             facecolor='w',
             edgecolor='k')
 
-        ax2 = None
         if self.wrange_set:
-
-            ylabel = "Capacitance (F)"
-            if self.mode == "cv":
-                if self.vrange_set:
-                    title = "CVW sweep"
-                else:
-                    title = "CW sweep at " + str(self.single_v) + " Volts"
-            elif self.mode == "cf":
-                title = "CFW sweep"
-            elif self.mode == "iv":
-                ylabel = "Current (A)"
-                title = "IV sweep"
-
-            ax1 = plt.subplot(221)
-            ax1.set_title(title)
-            ax1.set_ylabel(ylabel)
-
-            ax2 = plt.subplot(222)
-            ax2.set_title("Temperature")
-            ax2.set_ylabel("Temperature (C)")
-
-            ax3 = plt.subplot(223)
-            ax3.set_title("Magnitude")
-            ax3.set_ylabel("Magnitude (%)")
-
-            ax4 = plt.subplot(224)
-            ax4.set_title("Phase")
-            ax4.set_ylabel("Phase (°)")
-
-            for ax in [ax1, ax2, ax3, ax4]:
-                ax.minorticks_on()
-                ax.grid(b=True, which='major', color='#6C7A89')
-                ax.grid(b=True, which='minor', color='#D2D7D3')
-                ax.set_xlabel("Wavelength (Angstoms)", fontsize=14)
-                ax.set_title(fontsize=20, family="serif")
-                ax.set_ylabel(fontsize=14)
-                ax.plot()
-
-            ax4.set_ylim([-180, 0])
-            plt.tight_layout(h_pad=1.0)
-
-            display.display(plt.gcf())
-            display.clear_output(wait=True)
-            return ax1, ax2, ax3, ax4
+            self.multi_graph()
         else:
-            ax1 = plt.subplot(111)
-            ax1.minorticks_on()
-            ax1.grid(b=True, which='major', color='#6C7A89')
-            ax1.grid(b=True, which='minor', color='#D2D7D3')
-            if self.mode == "cv":
+            self.single_graph()
 
-                ax1.set_title(
-                    "CV sweep at " + str(self.single_w_val/10) + "nm",
-                    fontsize=20,
-                    family="serif")
-                ax1.set_xlabel("Volts (V)", fontsize=14)
-                ax1.set_ylabel("Capacitance (F)", fontsize=14)
-                ax1.plot()
-            elif self.mode == "cf":
-                ax1.set_title(
-                    "CF sweep at " + str(self.single_w_val/10) + "nm",
-                    fontsize=20,
-                    family="serif")
-                ax1.set_xlabel("Frequency (Hz)", fontsize=14)
-                ax1.set_ylabel("Capacitance (F)", fontsize=14)
-                ax1.semilogx()
-            elif self.mode == "iv":
-                ax1.set_title(
-                    "IV sweep at " + str(self.single_w_val/10) + "nm",
-                    fontsize=20,
-                    family="serif")
-                ax1.set_xlabel("Voltage (V)", fontsize=14)
-                ax1.set_ylabel("Current (A)", fontsize=14)
-                ax1.plot()
+    def cvf_commands(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
 
-            display.display(plt.gcf())
-            display.clear_output(wait=True)
-            return ax1
+        ------------------------------------------------------------------------
+        """
+        self.commands = [":CVU:RESET",
+                         ":CVU:MODE 1",
+                         ":CVU:MODEL " + str(self.model),
+                         ":CVU:SPEED " + str(self.speed),
+                         ":CVU:ACV " + str(self.acv),
+                         ":CVU:SOAK:DCV " + str(self.dcvsoak),
+                         ":CVU:ACZ:RANGE " + self.acz,
+                         ":CVU:CORRECT " + self.comps,
+                         ":CVU:LENGTH " + str(self.length),
+                         ":CVU:STANDBY 1",
+                         ":CVU:DELAY:SWEEP " + str(self.delay)]
+        if self.mode == "cv":
+            self.commands.append(
+                ":CVU:FREQ {0}".format(self.freq))
+            self.commands.append(
+                ":CVU:SWEEP:DCV {0},{1},{2}".format(self.vstart,
+                                                    self.vend,
+                                                    self.vstep))
+        elif self.mode == "cf":
+            self.commands.append(
+                ":CVU:SWEEP:FREQ {0},{1}".format(self.fstart,
+                                                 self.fstop))
+
+    def ct_commands(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        self.commands = [":CVU:MODE 0",
+                         ":CVU:RESET",
+                         ":CVU:MODEL " + str(self.model),
+                         ":CVU:SPEED " + str(self.speed),
+                         ":CVU:ACV " + str(self.acv),
+                         ":CVU:FREQ " + self.freq,
+                         ":CVU:DCV " + str(self.single_v),
+                         ":CVU:ACZ:RANGE " + self.acz,
+                         ":CVU:CORRECT " + self.comps,
+                         ":CVU:LENGTH " + str(self.length)]
+
+    def iv_commands(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        self.commands = [
+            "DE", "DR1", "CH1;CH2", "CH1,'VA','IA',1,1",
+            "CH2,'VC','IC',3,3", "SS",
+            "VR1,{0},{1},{2},{3}".format(self.vstart, self.vend,
+                                         self.vstep, self.compliance),
+            "DT {0}".format(self.delay),
+            "IT {0}".format(self.speed),
+            "RS {0}".format(self.sig_fig),
+            "RG 1, {0}".format(self.min_cur),
+            "SM DM2", "LI 'VA','IA'", "MD"]
 
     def setup_test(self):
         """
@@ -509,51 +629,13 @@ class K4200_test(object):
 
         ------------------------------------------------------------------------
         """
-        if not (self.mode == "cv" and not self.vrange_set):
-            if self.mode in ("cv", "cf"):
-                self.commands = [":CVU:RESET",
-                                 ":CVU:MODE 1",
-                                 ":CVU:MODEL " + str(self.model),
-                                 ":CVU:SPEED " + str(self.speed),
-                                 ":CVU:ACV " + str(self.acv),
-                                 ":CVU:SOAK:DCV " + str(self.dcvsoak),
-                                 ":CVU:ACZ:RANGE " + self.acz,
-                                 ":CVU:CORRECT " + self.comps,
-                                 ":CVU:LENGTH " + str(self.length),
-                                 ":CVU:STANDBY 1",
-                                 ":CVU:DELAY:SWEEP " + str(self.delay)]
-
-                if self.mode == "cv":
-                    self.commands.append(":CVU:FREQ " + self.freq)
-                    self.commands.append(
-                        ":CVU:SWEEP:DCV " + str(self.vstart) + ","
-                        + str(self.vend) + "," + str(self.vstep))
-
-                elif self.mode == "cf":
-                    self.commands.append(
-                        ":CVU:SWEEP:FREQ " + self.fstart + "," + self.fstop)
-            elif self.mode == "iv":
-                self.commands = [
-                    "DE", "DR1", "CH1;CH2", "CH1,'VA','IA',1,1",
-                    "CH2,'VC','IC',3,3", "SS",
-                    ("VR1, " + str(self.vstart) + "," + str(self.vend) +
-                     "," + str(self.vstep) + "," + str(self.compliance)),
-                    "DT " + str(self.delay),
-                    "IT " + str(self.speed),
-                    "RS " + str(self.sig_fig),
-                    "RG 1," + str(self.min_cur),
-                    "SM DM2", "LI 'VA','IA'", "MD"]
+        if self.vrange_set and self.mode != "ct":
+            (self.cvf_commands() if self.mode in
+             ("cv", "cf") else self.iv_commands())
+        elif self.mode != "ct":
+            self.iv_commands()
         else:
-            self.commands = [":CVU:MODE 0",
-                             ":CVU:RESET",
-                             ":CVU:MODEL " + str(self.model),
-                             ":CVU:SPEED " + str(self.speed),
-                             ":CVU:ACV " + str(self.acv),
-                             ":CVU:FREQ " + self.freq,
-                             ":CVU:DCV " + str(self.single_v),
-                             ":CVU:ACZ:RANGE " + self.acz,
-                             ":CVU:CORRECT " + self.comps,
-                             ":CVU:LENGTH " + str(self.length)]
+            return -1
 
         self.set_visa_instr(instrument="K4200")
         for c in self.commands:
@@ -563,16 +645,23 @@ class K4200_test(object):
 
         cm = cm110.mono(port=self.mono_port)
         sh = shutter.ard_shutter(port=self.shutter_port)
+        self.setup_graph()
         if self.wrange_set:
-            ax1, ax2, ax3, ax4 = self.setup_graph()
             self.set_visa_instr(instrument="LS331")
             self.ls331.timeout = 0.1
-            return ax1, ax2, ax3, ax4, cm, sh
-        else:
-            ax1 = self.setup_graph()
-            return ax1, cm, sh
+        return cm, sh
 
     def cv_no_v(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
         data = []
         t = []
         mag = []
@@ -599,6 +688,16 @@ class K4200_test(object):
         self.sec.append(s)
 
     def cv_v(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
         data = []
         t = []
         mag = []
@@ -619,6 +718,16 @@ class K4200_test(object):
             self.prim.append(sum(data)/len(data))
 
     def iv(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
         data = []
         t = []
         mag = []
@@ -645,32 +754,45 @@ class K4200_test(object):
         self.prim.append(avg)
 
     def re_plot(self, w):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
         colours = ["g", "b", "r", "c", "m", "y", "k"]
         if w > self.wstart:
-            del(self.ax2.lines[-1])
-            del(self.ax3.lines[-1])
-            del(self.ax4.lines[-1])
-        self.ax2.plot(self.wavelengths, self.temp, 'b-')
-        self.ax3.plot(self.wavelengths, self.mag, 'r-')
-        self.ax4.plot(self.wavelengths, self.pha, 'g-')
+            del(self.axes[1].lines[-1])
+            del(self.axes[2].lines[-1])
+            del(self.axes[3].lines[-1])
+        self.axes[1].plot(self.wavelengths, self.temp, 'b-')
+        self.axes[2].plot(self.wavelengths, self.mag, 'r-')
+        self.axes[3].plot(self.wavelengths, self.pha, 'g-')
         if self.vrange_set or self.mode == "cf":
             self.y = (list(map(list, zip(*self.prim))))
             i = 0
             for line in self.y:
                 if w > self.wstart:
-                    del(self.ax1.lines[-len(self.y)])
+                    del(self.axes[0].lines[-len(self.y)])
                 if i < 7:
-                    self.ax1.plot(self.wavelengths, line, colours[i])
+                    self.axes[0].plot(self.wavelengths, line, colours[i])
                 else:
-                    self.ax1.plot(self.wavelengths, line)
+                    self.axes[0].plot(self.wavelengths, line)
                 i += 1
         else:
             if w > self.wstart:
-                del(self.ax1.lines[-1])
-            self.ax1.plot(self.wavelengths, self.prim, 'b-')
+                del(self.axes[0].lines[-1])
+            self.axes[0].plot(self.wavelengths, self.prim, 'b-')
 
         display.display(plt.gcf())
         display.clear_output(wait=True)
+
+    def run_multi_sweep(self):
+        pass
 
     def run_test(self):
         """
@@ -691,10 +813,8 @@ class K4200_test(object):
         imgname = ("data/" + self.date + "/" + self.time + "_" + self.mode
                    + "_" + t_type + self.cust_name + ".png")
 
-        if self.wrange_set:
-            self.ax1, self.ax2, self.ax3, self.ax4, cm, sh = self.setup_test()
-        else:
-            ax1, cm, sh = self.setup_test()
+        cm, sh = self.setup_test()
+
         self.prim = []
         self.sec = []
         self.yaxis = []
@@ -783,7 +903,7 @@ class K4200_test(object):
                                  '', self.k4200.query("DO 'VA'")).split(',')
                 xname = "Voltage"
                 yname = "Current"
-            ax1.plot(self.xaxis, self.prim)
+            self.ax.plot(self.xaxis, self.prim)
             self.k4200.close()
             sh.close()
             sh.shutdown()
