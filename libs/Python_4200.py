@@ -371,7 +371,7 @@ class K4200_test(object):
     def set_path(self):
         """
         ------------------------------------------------------------------------
-        FUNCTION:
+        FUNCTION: set_path
         INPUTS: self
         RETURNS:
         DEPENDENCIES:
@@ -379,13 +379,17 @@ class K4200_test(object):
 
         ------------------------------------------------------------------------
         """
-        self.folder = path.join(getcwd(), "data/" + self.date)
-        if not path.exists(self.folder):
-            makedirs(self.folder)
-        self.filename = self.time + "_" + self.mode + "_"
+        date = strftime("%Y-%m-%d")
+        folder = path.join(getcwd(), "data/" + date)
+        if not path.exists(folder):
+            makedirs(folder)
+
         t_type = "multi" if self.wrange_set else "single"
-        self.filename += t_type + self.cust_name + ".csv"
-        self.final_path = path.join(self.folder, self.filename)
+        time = strftime("%H.%M.%S")
+        filename = "{0}_{1}_{2}{3}".format(time, self.mode,
+                                           t_type, self.cust_name)
+        self.csv_path = path.join(folder, filename, ".csv")
+        self.img_path = path.join(folder, filename, ".png")
 
     def save_to_csv(self, x_name, y_name, x, y, **kwargs):
         """
@@ -420,8 +424,7 @@ class K4200_test(object):
                 header.append(name)
                 data.append(value)
 
-        self.set_path()
-        with open(self.final_path, 'w', newline='') as csvfile:
+        with open(self.csv_path, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(header)
             writer.writerows(zip(*data))
@@ -430,9 +433,9 @@ class K4200_test(object):
     def multi_graph(self):
         """
         ------------------------------------------------------------------------
-        FUNCTION:
+        FUNCTION: multi_graph
         INPUTS: self
-        RETURNS:
+        RETURNS: 0
         DEPENDENCIES:
         ------------------------------------------------------------------------
 
@@ -643,13 +646,13 @@ class K4200_test(object):
 
         self.set_visa_instr(instrument="LIA5302")
 
-        cm = cm110.mono(port=self.mono_port)
-        sh = shutter.ard_shutter(port=self.shutter_port)
+        self.cm = cm110.mono(port=self.mono_port)
+        self.sh = shutter.ard_shutter(port=self.shutter_port)
         self.setup_graph()
+        self.set_path()
         if self.wrange_set:
             self.set_visa_instr(instrument="LS331")
             self.ls331.timeout = 0.1
-        return cm, sh
 
     def cv_no_v(self):
         """
@@ -742,11 +745,9 @@ class K4200_test(object):
                 t.append(float(self.ls331.query('KRDG?').replace('+', '')))
             except:
                 t.append(0)
-            self.lia_freq = (int(self.lia5302.query('FRQ'))/1000)
-            self.lia_mag = (int(self.lia5302.query('MAG'))/100)
-            self.lia_pha = (int(self.lia5302.query('PHA'))/1000)
-            mag.append(self.lia_mag)
-            pha.append(self.lia_pha)
+            # lia_freq = (int(self.lia5302.query('FRQ'))/1000)
+            mag.append(int(self.lia5302.query('MAG'))/100)
+            pha.append(int(self.lia5302.query('PHA'))/1000)
         self.mag.append(sum(mag)/len(mag))
         self.pha.append(sum(pha)/len(pha))
         self.temp.append(sum(t)/len(t))
@@ -792,7 +793,121 @@ class K4200_test(object):
         display.clear_output(wait=True)
 
     def run_multi_sweep(self):
-        pass
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        self.sh.open()
+        self.wavelengths = []
+
+        for w in range(self.wstart, self.wend+1, self.wstep):
+
+            self.wait > 0.5 and self.sh.close()
+            self.cm.command("goto", w)
+            sleep(self.wait)
+            self.wait > 0.5 and self.sh.open()
+
+            if self.mode in ("cv, cf"):
+                if not (self.mode == "cv" and not self.vrange_set):
+                    self.cv_no_v()
+                else:
+                    self.cv_v()
+            elif self.mode == "iv":
+                self.iv()
+
+            self.wavelengths.append(w)
+            self.re_plot(w)
+
+        self.cm.close()
+        self.sh.close()
+        self.sh.shutdown()
+
+        if self.mode == "cv" and self.vrange_set:
+            self.yaxis = ki4200.read_4200_x("volts", self.k4200)
+        elif self.mode == "cf":
+            self.yaxis = ki4200.read_4200_x("freq", self.k4200)
+        elif self.mode == "iv":
+            self.yaxis = sub('[N]',
+                             '', self.k4200.query("DO 'VA'")).split(',')
+        self.k4200.close()
+        self.save_to_csv(
+            x_name="Wavelengths (A)", x=self.wavelengths,
+            y_name="Voltage (V)", y=self.prim,
+            temperature=self.temp,
+            phase=self.pha,
+            magnitude=self.mag)
+
+        plt.savefig(self.imgname)
+        self.running = False
+        return 0
+
+    def run_single_sweep(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: self
+        RETURNS:
+        DEPENDENCIES:
+        ------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------
+        """
+        self.cm.command("goto", self.single_w_val)
+        self.cm.close()
+        sleep(1)
+        self.sh.open()
+        data = []
+        if self.mode in ("cv", "cf"):
+            for r in range(int(self.repetitions)):
+                self.k4200.write(":CVU:TEST:RUN")
+                self.k4200.wait_for_srq(timeout=None)
+                self.k4200.write(':CVU:DATA:Z?')
+                values = self.k4200.read(
+                    termination=",\r\n", encoding="utf-8")
+                d, sec = ki4200.CV_output_san(values)
+                data.append(d)
+        else:
+            for r in range(int(self.repetitions)):
+                self.k4200.write("ME1")
+                self.k4200.wait_for_srq(timeout=None)
+                out = self.k4200.query("DO 'IA'")
+                data.append([float(d) for d in sub(
+                    '[N]', '', out).split(',')])
+        if int(self.repetitions) > 1:
+            self.prim = [sum(col) / len(col) for col in zip(*data)]
+        if self.mode == "cv":
+            self.xaxis = ki4200.read_4200_x("volts", self.k4200)
+            xname = "Voltage"
+            yname = "Capacitance"
+        elif self.mode == "cf":
+            self.xaxis = ki4200.read_4200_x("freq", self.k4200)
+            xname = "Frequency"
+            yname = "Capacitance"
+        elif self.mode == "iv":
+            self.xaxis = sub('[N]',
+                             '', self.k4200.query("DO 'VA'")).split(',')
+            xname = "Voltage"
+            yname = "Current"
+        self.ax.plot(self.xaxis, self.prim)
+        self.k4200.close()
+        self.sh.close()
+        self.sh.shutdown()
+
+        self.save_to_csv(
+            x_name=xname, x=self.xaxis,
+            y_name=yname, y=self.prim)
+
+        display.display(plt.gcf())
+        display.clear_output(wait=True)
+        plt.savefig(self.imgname)
+        self.running = False
+        return 0
 
     def run_test(self):
         """
@@ -805,15 +920,9 @@ class K4200_test(object):
 
         ------------------------------------------------------------------------
         """
+        self.setup_test()
         self.running = True
         display.clear_output(wait=True)
-        self.date = strftime("%Y-%m-%d")
-        self.time = strftime("%H.%M.%S")
-        t_type = "multi" if self.wrange_set else "single"
-        imgname = ("data/" + self.date + "/" + self.time + "_" + self.mode
-                   + "_" + t_type + self.cust_name + ".png")
-
-        cm, sh = self.setup_test()
 
         self.prim = []
         self.sec = []
@@ -822,101 +931,7 @@ class K4200_test(object):
         self.mag = []
         self.pha = []
 
-        if self.wrange_set:
-            sh.open()
-            self.wavelengths = []
-
-            for w in range(self.wstart, self.wend+1, self.wstep):
-
-                self.wait > 0.5 and sh.close()
-                cm.command("goto", w)
-                sleep(self.wait)
-                self.wait > 0.5 and sh.open()
-
-                if self.mode in ("cv, cf"):
-                    if not (self.mode == "cv" and not self.vrange_set):
-                        self.cv_no_v()
-                    else:
-                        self.cv_v()
-                elif self.mode == "iv":
-                    self.iv()
-
-                self.wavelengths.append(w)
-                self.re_plot(w)
-
-            cm.close()
-            sh.close()
-            sh.shutdown()
-
-            if self.mode == "cv" and self.vrange_set:
-                self.yaxis = ki4200.read_4200_x(':CVU:DATA:VOLT?', self.k4200)
-            elif self.mode == "cf":
-                self.yaxis = ki4200.read_4200_x(':CVU:DATA:FREQ?', self.k4200)
-            elif self.mode == "iv":
-                self.yaxis = sub('[N]',
-                                 '', self.k4200.query("DO 'VA'")).split(',')
-            self.k4200.close()
-            self.save_to_csv(
-                x_name="Wavelengths (A)", x=self.wavelengths,
-                y_name="Voltage (V)", y=self.prim,
-                temperature=self.temp,
-                phase=self.pha,
-                magnitude=self.mag)
-
-            plt.savefig(imgname)
-            self.running = False
-            return 0
-
-        else:
-            cm.command("goto", self.single_w_val)
-            cm.close()
-            sleep(1)
-            sh.open()
-            data = []
-            for r in range(int(self.repetitions)):
-                if self.mode in ("cv", "cf"):
-                    self.k4200.write(":CVU:TEST:RUN")
-                    self.k4200.wait_for_srq(timeout=None)
-                    self.k4200.write(':CVU:DATA:Z?')
-                    values = self.k4200.read(
-                        termination=",\r\n", encoding="utf-8")
-                    d, sec = ki4200.CV_output_san(values)
-                    data.append(d)
-                else:
-                    self.k4200.write("ME1")
-                    self.k4200.wait_for_srq(timeout=None)
-                    out = self.k4200.query("DO 'IA'")
-                    data.append([float(d) for d in sub(
-                        '[N]', '', out).split(',')])
-            if int(self.repetitions) > 1:
-                self.prim = [sum(col) / len(col) for col in zip(*data)]
-            if self.mode == "cv":
-                self.xaxis = ki4200.read_4200_x(':CVU:DATA:VOLT?', self.k4200)
-                xname = "Voltage"
-                yname = "Capacitance"
-            elif self.mode == "cf":
-                self.xaxis = ki4200.read_4200_x(':CVU:DATA:FREQ?', self.k4200)
-                xname = "Frequency"
-                yname = "Capacitance"
-            elif self.mode == "iv":
-                self.xaxis = sub('[N]',
-                                 '', self.k4200.query("DO 'VA'")).split(',')
-                xname = "Voltage"
-                yname = "Current"
-            self.ax.plot(self.xaxis, self.prim)
-            self.k4200.close()
-            sh.close()
-            sh.shutdown()
-
-            self.save_to_csv(
-                x_name=xname, x=self.xaxis,
-                y_name=yname, y=self.prim)
-
-            display.display(plt.gcf())
-            display.clear_output(wait=True)
-            plt.savefig(imgname)
-            self.running = False
-            return 0
+        self.run_multi_sweep() if self.wrange_set else self.run_single_sweep()
 
 
 class cap_test(K4200_test):

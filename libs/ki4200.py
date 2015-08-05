@@ -58,20 +58,22 @@ def read_4200_x(read_command, instrument):
     Takes an appropriate CVU read command as an argument and sends it to a
     4200-SCS. Then reads the raw returned data and formats it into an list of
     floats. Acceptable read commands are:
-    :CVU:DATA:VOLT?
-    :CVU:DATA:FREQ?
-    :CVU:DATA:STATUS?
-    :CVU:DATA:TSTAMP?
+    1) volt --> :CVU:DATA:VOLT?
+    2) freq --> :CVU:DATA:FREQ?
+    3) status --> :CVU:DATA:STATUS?
+    4) time --> :CVU:DATA:TSTAMP?
     ---------------------------------------------------------------------------
     """
-    ok_commands = [':CVU:DATA:VOLT?', ':CVU:DATA:FREQ?',
-                   ':CVU:DATA:STATUS?', ':CVU:DATA:TSTAMP?']
+    commands = {"volts": ":CVU:DATA:VOLT?",
+                "freq": ":CVU:DATA:FREQ?",
+                "status": ":CVU:DATA:STATUS?",
+                "time": ":CVU:DATA:TSTAMP?"}
     try:
-        assert(read_command in ok_commands)
+        assert(read_command in commands.keys())
     except AssertionError:
         print('Incorrect read command passed')
 
-    instrument.write(read_command)
+    instrument.write(commands[read_command])
     data = instrument.read(termination=",\r\n", encoding="utf-8").split(",")
     x = [float(d) for d in data]
     return x
