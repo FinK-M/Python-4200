@@ -395,8 +395,8 @@ class K4200_test(object):
         time = strftime("%H.%M.%S")
         filename = "{0}_{1}_{2}{3}".format(time, self.mode,
                                            t_type, self.cust_name)
-        self.csv_path = path.join(folder, filename, ".csv")
-        self.img_path = path.join(folder, filename, ".png")
+        self.csv_path = path.join(folder, filename + ".csv")
+        self.img_path = path.join(folder, filename + ".png")
 
     def save_to_csv(self, x_name, y_name, x, y, **kwargs):
         """
@@ -810,15 +810,20 @@ class K4200_test(object):
 
         ------------------------------------------------------------------------
         """
+        sleep(2)
         self.sh.open()
         self.wavelengths = []
 
         for w in range(self.wstart, self.wend+1, self.wstep):
-
-            self.wait > 0.5 and self.sh.close()
+            """
+            if self.wait > 0.5:
+                self.sh.close()
+                print("closing")
+            """
             self.cm.command("goto", w)
-            sleep(self.wait)
-            self.wait > 0.5 and self.sh.open()
+            # sleep(self.wait)
+            if self.wait > 0.5:
+                self.sh.open()
 
             if self.mode in ("cv, cf"):
                 if not (self.mode == "cv" and not self.vrange_set):
@@ -850,7 +855,7 @@ class K4200_test(object):
             phase=self.pha,
             magnitude=self.mag)
 
-        plt.savefig(self.imgname)
+        plt.savefig(self.img_path)
         self.running = False
         return 0
 
