@@ -211,50 +211,57 @@ class K4200_test(object):
                 K4200_test.ard_default = "No Shutter"
 
     def visa_discovery(self):
+
         all_resources = K4200_test.rm.list_resources()
-        K4200_test.visa_resources = (
-            [i for i in all_resources if "ASRL" not in i])
+
+        queries = ['ID?', '*IDN?', 'ID']
         names = ['MODEL331S',
                  'MODEL 2440',
                  '34970A',
                  '5302',
                  'KI4200',
                  'HP6634A']
-        queries = ['ID?', '*IDN?', 'ID']
+
+        K4200_test.instrs = {}
+        for name in names:
+            K4200_test.instrs[name] = "Not Present"
+
+        K4200_test.visa_resources = (
+            [i for i in all_resources if "ASRL" not in i])
+        K4200_test.visa_resources.append("Not Present")
+
         K4200_test.visa_okay = True
         if K4200_test.visa_resources:
-            while True:
-                K4200_test.instrs = {}
-                for address in K4200_test.visa_resources:
-                    try:
-                        instr = K4200_test.rm.open_resource(address)
-                        instr.timeout = 4
-                        instr.clear()
-                        sleep(0.3)
-                    except:
-                        print("Could not open resource")
-                        continue
-                    for q in queries:
-                        try:
-                            temp = instr.query(q, delay=0.05).strip('\n\r')
-                            break
-                        except:
-                            pass
-                    for name in names:
-                        if name in temp:
-                            K4200_test.instrs[name] = address
+            for address in K4200_test.visa_resources:
+                try:
+                    instr = K4200_test.rm.open_resource(address)
+                    instr.timeout = 4
+                    sleep(0.1)
+                    instr.clear()
+                    sleep(0.3)
                     instr.close()
-                if 'KI4200' in K4200_test.instrs.keys():
-                    break
-                else:
-                    sleep(1)
+                    instr = K4200_test.rm.open_resource(address)
+                    run = True
+                    while run:
+                        for q in queries:
+                            try:
+                                reply = instr.query(q, delay=0.05)
+                                for name in names:
+                                    if name in reply:
+                                        K4200_test.instrs[name] = address
+                                        run = False
+                            except:
+                                continue
+                    instr.close()
+                except:
+                    sleep(0.5)
+                    continue
+            if ((K4200_test.instrs['5302'] == "Not Present" or
+                 K4200_test.instrs['MODEL331S'] == "Not Present" or
+                 K4200_test.instrs['KI4200'] == "Not Present")):
+                K4200_test.visa_okay = False
         else:
             K4200_test.visa_okay = False
-            K4200_test.visa_resources = ["No resources"]
-            K4200_test.instrs = {}
-            K4200_test.instrs['KI4200'] = "No resources"
-            K4200_test.instrs['MODEL331S'] = "No resources"
-            K4200_test.instrs['5302'] = "No resources"
 
     def set_visa_instr(self, instrument):
         """
