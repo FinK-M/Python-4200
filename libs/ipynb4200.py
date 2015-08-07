@@ -245,6 +245,15 @@ class CIVW_GUI(object):
             align="center")
 
     def visa_selector(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: test (Python_4200.test)
+        RETURNS:
+        DEPENDENCIES: IPython.html.widgets
+        ------------------------------------------------------------------------
+        ------------------------------------------------------------------------
+        """
         self.master.visa_discovery()
         print(self.master.instrs['KI4200'],  self.master.visa_resources)
         self.K4200_select = widgets.Dropdown(
@@ -546,6 +555,15 @@ class CIVW_GUI(object):
         return comp_box
 
     def repeat_select(self, test):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: test (Python_4200.test)
+        RETURNS:
+        DEPENDENCIES: IPython.html.widgets
+        ------------------------------------------------------------------------
+        ------------------------------------------------------------------------
+        """
         one_to_ten = [str(i) for i in range(1, 11)]
 
         repeat_menu = widgets.Dropdown(
@@ -561,6 +579,15 @@ class CIVW_GUI(object):
         return repeat_menu
 
     def iv_test_params(self, test):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: test (Python_4200.test)
+        RETURNS:
+        DEPENDENCIES: IPython.html.widgets
+        ------------------------------------------------------------------------
+        ------------------------------------------------------------------------
+        """
         order = ["E" + str(i) for i in range(-3, -13, -3)]
 
         compliance_select = widgets.BoundedFloatText(
@@ -707,6 +734,15 @@ class CIVW_GUI(object):
             align="center")
 
     def make_cv_tabs(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: test (Python_4200.test)
+        RETURNS:
+        DEPENDENCIES: IPython.html.widgets
+        ------------------------------------------------------------------------
+        ------------------------------------------------------------------------
+        """
         cv_pages = [self.v_sliders(self.cv_test),
                     self.w_sliders(self.cv_test),
                     self.delays(self.cv_test),
@@ -720,6 +756,15 @@ class CIVW_GUI(object):
         self.cv_tabs = cv_tabs
 
     def make_cf_tabs(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: test (Python_4200.test)
+        RETURNS:
+        DEPENDENCIES: IPython.html.widgets
+        ------------------------------------------------------------------------
+        ------------------------------------------------------------------------
+        """
         cf_pages = [self.ac_freq(self.cf_test),
                     self.w_sliders(self.cf_test),
                     self.delays(self.cf_test),
@@ -733,6 +778,15 @@ class CIVW_GUI(object):
         self.cf_tabs = cf_tabs
 
     def make_iv_tabs(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: test (Python_4200.test)
+        RETURNS:
+        DEPENDENCIES: IPython.html.widgets
+        ------------------------------------------------------------------------
+        ------------------------------------------------------------------------
+        """
         iv_pages = [self.v_sliders(self.iv_test),
                     self.w_sliders(self.iv_test),
                     self.delays(self.iv_test),
@@ -746,6 +800,15 @@ class CIVW_GUI(object):
         self.iv_tabs = iv_tabs
 
     def visible_tabs(self, mode):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: test (Python_4200.test)
+        RETURNS:
+        DEPENDENCIES: IPython.html.widgets
+        ------------------------------------------------------------------------
+        ------------------------------------------------------------------------
+        """
         if mode == "CV":
             self.cv_tabs.visible = True
             self.cf_tabs.visible = False
@@ -762,6 +825,15 @@ class CIVW_GUI(object):
             self.iv_tabs.visible = True
 
     def top_bar(self):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: test (Python_4200.test)
+        RETURNS:
+        DEPENDENCIES: IPython.html.widgets
+        ------------------------------------------------------------------------
+        ------------------------------------------------------------------------
+        """
         self.start_button = widgets.Button(
             description="Run test",
             margin=20)
@@ -794,6 +866,15 @@ class CIVW_GUI(object):
         display(top, self.cv_tabs, self.cf_tabs, self.iv_tabs)
 
     def start_test(self, name):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION:
+        INPUTS: test (Python_4200.test)
+        RETURNS:
+        DEPENDENCIES: IPython.html.widgets
+        ------------------------------------------------------------------------
+        ------------------------------------------------------------------------
+        """
         if Python_4200.K4200_test.run_all:
             self.cv_test.run_test()
             Python_4200.K4200_test.last_test = "c"

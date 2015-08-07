@@ -101,7 +101,7 @@ class ard_shutter(object):
         """
         self.port = port
         self.shutter = serial.Serial(port=self.port)
-        sleep(2)
+        sleep(4)
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__, self.port)
@@ -137,6 +137,7 @@ class ard_shutter(object):
         """
         self.shutter.close()
 
+
 if __name__ == "__main__":
     """
     ----------------------------------------------------------------------------
@@ -147,8 +148,9 @@ if __name__ == "__main__":
     ----------------------------------------------------------------------------
     """
 
-    sh = ard_shutter("COM12")
+    sh = ard_shutter("COM13")
     sh.open()
     sleep(2)
     sh.close()
     sh.shutdown()
+

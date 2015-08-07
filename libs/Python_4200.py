@@ -59,7 +59,8 @@ class K4200_test(object):
         RETURNS: nothing
         DEPENDENCIES: none
         ------------------------------------------------------------------------
-
+        Takes an argument for the name/label of the test instance. If it cannot
+        be converted to a string the user is prompted to enter a valid name.
         ------------------------------------------------------------------------
         """
         try:
@@ -80,14 +81,19 @@ class K4200_test(object):
         RETURNS: none
         DEPENDENCIES: none
         ------------------------------------------------------------------------
-
+        Takes an argument for integration speed from 1 to 3. 4 Indicates custom
+        parameters which is not implimented. If an invalid argument is given
+        the user is prompted to enter a valid one. If the user tries fails more
+        than three times the function quits.
         ------------------------------------------------------------------------
         """
         if speed in range(3):
-            self.speed = speed
+            self.speed = int(speed)
         elif speed == 4:
+            # Custom timing, not implimented
             pass
         else:
+            tries = 0
             while True:
                 try:
                     response = int(input("Select integration speed: "))
@@ -97,7 +103,10 @@ class K4200_test(object):
                     else:
                         raise ValueError
                 except ValueError:
-                    print("Please enter a correct value: ")
+                    tries += 1
+                    if tries > 2:
+                        return -1
+                    print("Please enter a correct value...")
 
     def set_delay(self, delay):
         """
@@ -113,6 +122,7 @@ class K4200_test(object):
         if 0 <= delay <= 60:
             self.delay = delay
         else:
+            tries = 0
             while True:
                 try:
                     delay = float(input("Enter delay time: "))
@@ -122,6 +132,9 @@ class K4200_test(object):
                     else:
                         raise ValueError
                 except ValueError:
+                    tries += 1
+                    if tries > 2:
+                        return -1
                     print("Please enter valid delay")
 
     def set_wait(self, wait_sec, wait_min):
@@ -129,15 +142,17 @@ class K4200_test(object):
         ------------------------------------------------------------------------
         FUNCTION: set_wait
         INPUTS: self, wait_sec, wait_min(int)
-        RETURNS: nothing
+        RETURNS: wait (int)
         DEPENDENCIES: none
         ------------------------------------------------------------------------
-
+        Takes a number of seconds and minutes to wait and combines them into a
+        single number of seconds to wait between test sweeps
         ------------------------------------------------------------------------
         """
         wait = wait_sec + wait_min * 60
         if 0 <= wait <= 3660:
             self.wait = wait
+            return wait
         else:
             while True:
                 try:
@@ -149,15 +164,40 @@ class K4200_test(object):
                         raise ValueError
                 except ValueError:
                     print("Please enter valid wait time")
+            return wait
 
     def set_address(self, instrument, address):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: set_address
+        INPUTS: self, instrument (str), address(str)
+        RETURNS: None
+        DEPENDENCIES: None
+        ------------------------------------------------------------------------
+        Takes an instrument name (either 'K4200' or 'LS331') and a VISA
+        resource address. The address is asigned to the appropriate instrument.
+        This method should not be used as autodiscovery replaces it.
+        ------------------------------------------------------------------------
+        """
         print("This method has been depreciated, use auto discovery")
         if instrument == "K4200":
             self.k4200_address = address
         elif instrument == "LS331":
             self.ls331_address = address
+        return None
 
     def set_repetitions(self, repetitions):
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: set_repetitions
+        INPUTS: self, repetitions (int)
+        RETURNS: None
+        DEPENDENCIES: None
+        ------------------------------------------------------------------------
+        Takes an integer for number of times to repeat each sweep. If argument
+        is not present or is invalid user is prompted to enter a value.
+        ------------------------------------------------------------------------
+        """
         try:
             self.repetitions = int(repetitions)
         except:
@@ -167,14 +207,19 @@ class K4200_test(object):
         """
         ------------------------------------------------------------------------
         FUNCTION: com_discovery
-        INPUTS: None
+        INPUTS: *args (any)
         RETURNS: offline_mode (bool)
                  result, default (str)
         DEPENDENCIES: serial
         ------------------------------------------------------------------------
-        CHANGE THIS
+        Searches all available COM ports for the shutter and monochromator.
+        Shutter is identified by COM device with 'Arduino' in name, and
+        monochromator is identified by sending an identification command and
+        checking the reply.
         ------------------------------------------------------------------------
         """
+        cm_okay = False
+        sh_okay = False
         K4200_test.com_okay = False
         K4200_test.ard_default = "Offline"
         K4200_test.mono_default = "Offline"
@@ -191,7 +236,7 @@ class K4200_test(object):
             for port in com_ports:
                 K4200_test.result.append(port[0])
                 if "Arduino" in port[1]:
-                    K4200_test.com_okay = True
+                    sh_okay = True
                     K4200_test.ard_default = port[0]
 
                 else:
@@ -201,17 +246,32 @@ class K4200_test(object):
                         sleep(0.1)
                         # Can't decode this, but only CM110 will reply this way
                         if ser.read(ser.inWaiting()) == b'\xa2\x18':
+                            cm_okay = True
                             K4200_test.mono_default = port[0]
                         ser.close()
                     except:
                         pass
-
+            K4200_test.com_okay = sh_okay and cm_okay
             if not K4200_test.com_okay:
                 K4200_test.result.append("No Shutter")
                 K4200_test.ard_default = "No Shutter"
 
     def visa_discovery(self):
-
+        """
+        ------------------------------------------------------------------------
+        FUNCTION: visa_discovery
+        INPUTS: self
+        RETURNS: None
+        DEPENDENCIES: visa
+        ------------------------------------------------------------------------
+        From a list of all available VISA resources, those with the INSTR
+        prefix are filtered into their own list. Each instrument in this list
+        is then queried using three possible identification commands until
+        its identity is ascertained. The instrument and address are then
+        linked. If an important instrument is not a present a flag is set to
+        prevent the test running.
+        ------------------------------------------------------------------------
+        """
         all_resources = K4200_test.rm.list_resources()
 
         queries = ['ID?', '*IDN?', 'ID']
@@ -271,7 +331,7 @@ class K4200_test(object):
         RETURNS: nothing
         DEPENDENCIES: pyvisa/visa
         ------------------------------------------------------------------------
-
+        If the 
         ------------------------------------------------------------------------
         """
         if instrument.upper() == "K4200":
@@ -333,7 +393,7 @@ class K4200_test(object):
         """
         if step > abs(end - start) or end == start:
             raise ValueError
-        elif (end - start < 0 and step > 0) or (end - start > 0 and step < 0):
+        elif ((end-start) < 0 and step > 0) or ((end-start) > 0 and step < 0):
             step = - step
             return [start, end, step]
         else:
@@ -497,15 +557,15 @@ class K4200_test(object):
 
         ------------------------------------------------------------------------
         """
-        ax = plt.subplot(111)
+        self.ax = plt.subplot(111)
 
-        ax.minorticks_on()
-        ax.grid(b=True, which='major', color='#6C7A89')
-        ax.grid(b=True, which='minor', color='#D2D7D3')
+        self.ax.minorticks_on()
+        self.ax.grid(b=True, which='major', color='#6C7A89')
+        self.ax.grid(b=True, which='minor', color='#D2D7D3')
 
-        ax.set_xlabel("Voltage (V)", fontsize=14)
-        ax.set_ylabel("Capacitance (F)", fontsize=14)
-        ax.set_title(
+        self.ax.set_xlabel("Voltage (V)", fontsize=14)
+        self.ax.set_ylabel("Capacitance (F)", fontsize=14)
+        self.ax.set_title(
             "{0} sweep at {1} nm".format(
                 self.mode.upper(),
                 self.single_w_val/10),
@@ -513,16 +573,15 @@ class K4200_test(object):
             family="serif")
 
         if self.mode == "cv":
-            ax.plot()
+            self.ax.plot()
         elif self.mode == "cf":
-            ax.set_xlabel("Frequency (Hz)")
-            ax.semilogx()
+            self.ax.set_xlabel("Frequency (Hz)")
+            self.ax.semilogx()
         elif self.mode == "iv":
-            ax.set_ylabel("Current (A)")
-            ax.plot()
+            self.ax.set_ylabel("Current (A)")
+            self.ax.plot()
         display.display(plt.gcf())
         display.clear_output(wait=True)
-        self.ax = ax
         return 1
 
     def setup_graph(self):
@@ -655,6 +714,7 @@ class K4200_test(object):
 
         self.cm = cm110.mono(port=self.mono_port)
         self.sh = shutter.ard_shutter(port=self.shutter_port)
+        self.sh.open()
         self.setup_graph()
         self.set_path()
         if self.wrange_set:
@@ -747,7 +807,7 @@ class K4200_test(object):
             self.k4200.wait_for_srq(timeout=None)
             out = self.k4200.query("DO 'IA'")
             data.append([float(d) for d in sub(
-                '[N]', '', out).split(',')])
+                '[NC]', '', out).split(',')])
             try:
                 t.append(float(self.ls331.query('KRDG?').replace('+', '')))
             except:
@@ -810,20 +870,20 @@ class K4200_test(object):
 
         ------------------------------------------------------------------------
         """
-        sleep(2)
         self.sh.open()
         self.wavelengths = []
 
         for w in range(self.wstart, self.wend+1, self.wstep):
-            """
+
             if self.wait > 0.5:
                 self.sh.close()
                 print("closing")
-            """
-            self.cm.command("goto", w)
-            # sleep(self.wait)
-            if self.wait > 0.5:
+                self.cm.command("goto", w)
+                sleep(self.wait)
                 self.sh.open()
+            else:
+                self.cm.command("goto", w)
+                sleep(self.wait)
 
             if self.mode in ("cv, cf"):
                 if not (self.mode == "cv" and not self.vrange_set):
@@ -845,7 +905,7 @@ class K4200_test(object):
         elif self.mode == "cf":
             self.yaxis = ki4200.read_4200_x("freq", self.k4200)
         elif self.mode == "iv":
-            self.yaxis = sub('[N]',
+            self.yaxis = sub('[NC]',
                              '', self.k4200.query("DO 'VA'")).split(',')
         self.k4200.close()
         self.save_to_csv(
@@ -890,7 +950,7 @@ class K4200_test(object):
                 self.k4200.wait_for_srq(timeout=None)
                 out = self.k4200.query("DO 'IA'")
                 data.append([float(d) for d in sub(
-                    '[N]', '', out).split(',')])
+                    '[NC]', '', out).split(',')])
         if int(self.repetitions) > 1:
             self.prim = [sum(col) / len(col) for col in zip(*data)]
         if self.mode == "cv":
@@ -902,7 +962,7 @@ class K4200_test(object):
             xname = "Frequency"
             yname = "Capacitance"
         elif self.mode == "iv":
-            self.xaxis = sub('[N]',
+            self.xaxis = sub('[NC]',
                              '', self.k4200.query("DO 'VA'")).split(',')
             xname = "Voltage"
             yname = "Current"
@@ -917,7 +977,7 @@ class K4200_test(object):
 
         display.display(plt.gcf())
         display.clear_output(wait=True)
-        plt.savefig(self.imgname)
+        plt.savefig(self.img_path)
         self.running = False
         return 0
 
@@ -1182,8 +1242,9 @@ class cv_test(cap_test):
             try:
                 self.vstart, self.vend, self.vstep = self.step_check(
                     vstart, vend, vstep)
+                self.vrange_set = True
             except:
-                print("Invalid variables entered")
+                pass
         else:
             while True:
                 try:
@@ -1192,10 +1253,10 @@ class cv_test(cap_test):
                     vstep = float(input("Enter step size: "))
                     self.vstart, self.vend, self.vstep = self.step_check(
                         vstart, vend, vstep)
+                    self.vrange_set = True
                     break
                 except ValueError:
                     print("Please enter valid voltages...")
-        self.vrange_set = True
 
     def set_single_v(self, v):
         self.single_v = v
@@ -1210,12 +1271,12 @@ class cf_test(cap_test):
 
     """
     ---------------------------------------------------------------------------
-       _____   ______   _______   ______    _____   _______
-      / ____| |  ____| |__   __| |  ____|  / ____| |__   __|
-     | |      | |__       | |    | |__    | (___      | |
-     | |      |  __|      | |    |  __|    \___ \     | |
-     | |____  | |         | |    | |____   ____) |    | |
-      \_____| |_|         |_|    |______| |_____/     |_|
+      _____   ______   _______   ______    _____   _______
+     / ____| |  ____| |__   __| |  ____|  / ____| |__   __|
+    | |      | |__       | |    | |__    | (___      | |
+    | |      |  __|      | |    |  __|    \___ \     | |
+    | |____  | |         | |    | |____   ____) |    | |
+     \_____| |_|         |_|    |______| |_____/     |_|
     ---------------------------------------------------------------------------
 
     ---------------------------------------------------------------------------
@@ -1316,7 +1377,7 @@ class iv_test(K4200_test):
         self.label = label
         self.speed = speed
         self.delay = delay
-        self.vstart = 0
+        self.vstart = -5
         self.vend = 5
         self.vstep = 1
         self.compliance = "100E-3"
