@@ -27,8 +27,8 @@ Below is the code uploaded to the Arduino Uno.
 #include <Servo.h>
 
 Servo myservo;
-char p = '0';
-char last_p = '0';
+char p = '-1';
+char last_p = '-1';
 
 void setup()
 {
@@ -102,12 +102,27 @@ class ard_shutter(object):
         self.port = port
         self.shutter = serial.Serial(port=self.port)
         sleep(4)
+        self.shutter.flush()
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__, self.port)
 
     def __str__(self):
         return "Arduino shutter instance at %s" % self.port
+
+    def query(self):
+        """
+        ------------------------------------------------------------------------
+        This function will query the session by sending the character "q".
+        If the shutter is present the reply will be "Shutter" amd the function
+        returns true, else returns false.
+        ------------------------------------------------------------------------
+        """
+        self.shutter.write(b'q')
+        sleep(0.1)
+        status = self.shutter.read(self.shutter.inWaiting()).decode()
+        correct = True if "Shutter" in status else False
+        return correct
 
     def open(self):
         """
@@ -118,6 +133,8 @@ class ard_shutter(object):
         """
         self.shutter.write(b'0')
         sleep(1)  # wait for movement
+        status = self.shutter.read(self.shutter.inWaiting())
+        return status.decode().strip("\r\n")
 
     def close(self):
         """
@@ -128,6 +145,8 @@ class ard_shutter(object):
         """
         self.shutter.write(b'1')
         sleep(1)  # wait for movement
+        status = self.shutter.read(self.shutter.inWaiting())
+        return status.decode().strip("\r\n")
 
     def shutdown(self):
         """
@@ -147,10 +166,10 @@ if __name__ == "__main__":
     3) Closes the port.
     ----------------------------------------------------------------------------
     """
-
+    sleep(4)
     sh = ard_shutter("COM13")
-    sh.open()
+    print("Shutter detected: {0}".format(sh.query()))
+    print(sh.open())
     sleep(2)
-    sh.close()
+    print(sh.close())
     sh.shutdown()
-
