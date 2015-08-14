@@ -9,13 +9,14 @@ void setup()
   //Connect servo motor to PWM pin 9
   myservo.attach(9);
   
-  
+  /*
   //Jig servo back and forth to prevent stuttering
   myservo.write(0);
   delay(500);
   myservo.write(45);
   delay(500);
   myservo.write(0);
+  */
   
   Serial.begin(9600);
 }

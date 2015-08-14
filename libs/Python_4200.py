@@ -225,6 +225,13 @@ class K4200_test(object):
         K4200_test.mono_default = "Offline"
         K4200_test.result = ["Offline"]
         com_ports = list(list_ports.comports())
+        replies = ['Shutter',
+                   chr(27),
+                   'q']
+        instrs = {chr(27): "Monochromator",
+                  "Shutter": "Shutter",
+                  "q": "5320 LIA"}
+        self.devices = {}
 
         if not com_ports:
             K4200_test.result = ["No Ports"]
@@ -232,29 +239,42 @@ class K4200_test(object):
             K4200_test.mono_default = "No Ports"
             K4200_test.com_okay = False
         else:
-            K4200_test.result = []
-            for port in com_ports:
-                K4200_test.result.append(port[0])
-                if "Arduino" in port[1]:
-                    sh_okay = True
-                    K4200_test.ard_default = port[0]
+            K4200_test.result = [c[0] for c in com_ports]
+            sessions = [serial.Serial(c) for c in K4200_test.result]
+            sleep(2)
+            for s in sessions:
+                try:
+                    s.flush()
+                    s.write(b'q')
+                    s.write(chr(27).encode())
+                    sleep(0.1)
+                    num_bytes = s.inWaiting()
+                    if num_bytes == 0:
+                        continue
+                    else:
+                        reply = s.read(num_bytes).decode()
+                    for r in replies:
+                        if r in reply:
+                            self.devices[instrs[r]] = s.port
+                except:
+                    print("failed to read from {0}".format(s))
+                s.close()
 
-                else:
-                    try:
-                        ser = serial.Serial(port[0])
-                        ser.write(b'27')
-                        sleep(0.1)
-                        # Can't decode this, but only CM110 will reply this way
-                        if ser.read(ser.inWaiting()) == b'\xa2\x18':
-                            cm_okay = True
-                            K4200_test.mono_default = port[0]
-                        ser.close()
-                    except:
-                        pass
-            K4200_test.com_okay = sh_okay and cm_okay
-            if not K4200_test.com_okay:
-                K4200_test.result.append("No Shutter")
+            if "Shutter" in self.devices.keys():
+                sh_okay = True
+                K4200_test.ard_default = self.devices["Shutter"]
+            else:
                 K4200_test.ard_default = "No Shutter"
+                K4200_test.result.append("No Shutter")
+
+            if "Monochromator" in self.devices.keys():
+                cm_okay = True
+                K4200_test.mono_default = self.devices["Monochromator"]
+            else:
+                K4200_test.mono_default = "No Monochromator"
+                K4200_test.result.append("No Monochromator")
+
+            K4200_test.com_okay = sh_okay and cm_okay
 
     def visa_discovery(self):
         """
@@ -272,56 +292,42 @@ class K4200_test(object):
         prevent the test running.
         ------------------------------------------------------------------------
         """
-        all_resources = K4200_test.rm.list_resources()
-
-        queries = ['ID?', '*IDN?', 'ID']
+        K4200_test.visa_okay = True
+        K4200_test.instrs = {}
+        K4200_test.instrs['5302'] = "Not Present"
+        K4200_test.instrs['MODEL331S'] = "Not Present"
+        K4200_test.instrs['KI4200'] = "Not Present"
+        queries = ['ID?', 'ID', '*IDN?']
         names = ['MODEL331S',
                  'MODEL 2440',
                  '34970A',
                  '5302',
                  'KI4200',
                  'HP6634A']
+        K4200_test.visa_resources = instr_address = (
+            [i for i in self.rm.list_resources() if "ASRL" not in i])
+        sessions = [self.rm.open_resource(i) for i in instr_address]
 
-        K4200_test.instrs = {}
-        for name in names:
-            K4200_test.instrs[name] = "Not Present"
-
-        K4200_test.visa_resources = (
-            [i for i in all_resources if "ASRL" not in i])
-        K4200_test.visa_resources.append("Not Present")
-
-        K4200_test.visa_okay = True
-        if K4200_test.visa_resources:
-            for address in K4200_test.visa_resources:
-                try:
-                    instr = K4200_test.rm.open_resource(address)
-                    instr.timeout = 4
-                    sleep(0.1)
-                    instr.clear()
-                    sleep(0.3)
-                    instr.close()
-                    instr = K4200_test.rm.open_resource(address)
-                    run = True
-                    while run:
-                        for q in queries:
-                            try:
-                                reply = instr.query(q, delay=0.05)
-                                for name in names:
-                                    if name in reply:
-                                        K4200_test.instrs[name] = address
-                                        run = False
-                            except:
-                                continue
-                    instr.close()
-                except:
-                    sleep(0.5)
-                    continue
-            if ((K4200_test.instrs['5302'] == "Not Present" or
-                 K4200_test.instrs['MODEL331S'] == "Not Present" or
-                 K4200_test.instrs['KI4200'] == "Not Present")):
-                K4200_test.visa_okay = False
-        else:
+        for s in sessions:
+            s.clear()
+        for q in queries:
+            for s in sessions:
+                s.write(q)
+        for s in sessions:
+            try:
+                reply = s.read()
+                for name in names:
+                    if name in reply:
+                        K4200_test.instrs[name] = (
+                            "GPIB0::{0}::INSTR".format(s.primary_address))
+            except:
+                print("failed to read from {0}".format(s))
+            s.close()
+        if ((K4200_test.instrs['5302'] == "Not Present" or
+             K4200_test.instrs['MODEL331S'] == "Not Present" or
+             K4200_test.instrs['KI4200'] == "Not Present")):
             K4200_test.visa_okay = False
+            self.visa_resources.append("Not Present")
 
     def set_visa_instr(self, instrument):
         """

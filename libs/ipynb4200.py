@@ -307,6 +307,7 @@ class CIVW_GUI(object):
         self.mono_com_select = widgets.Dropdown(
             options=self.master.result,
             description="Monochromator port",
+            value=self.master.mono_default,
             margin=5)
 
         self.ard_com_select = widgets.Dropdown(
@@ -355,6 +356,7 @@ class CIVW_GUI(object):
             self.master.com_discovery()
             self.master.visa_discovery()
             self.mono_com_select.options = self.master.result
+            self.mono_com_select.value = self.master.mono_default
             self.ard_com_select.options = self.master.result
             self.ard_com_select.value = self.master.ard_default
             self.K4200_select.options = self.master.visa_resources
