@@ -1,4 +1,4 @@
-from IPython.html import widgets
+import ipywidgets as widgets
 from IPython.display import display
 from threading import Timer
 from libs import Python_4200
