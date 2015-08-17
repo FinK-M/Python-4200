@@ -28,7 +28,8 @@ class mono(object):
     """
     ----------------------------------------------------------------------------
     CLASS: mono
-    INIT VARIABLES: port (str)
+    INIT VARIABLES: port (string) --> "COM1"
+                    debug (boolean) --> False
     INHERITANCE: Object
     ----------------------------------------------------------------------------
     An instance of this class represents a single monochromator. The user need
@@ -44,7 +45,7 @@ class mono(object):
     ----------------------------------------------------------------------------
     """
 
-    def __init__(self, port="COM1", debug=False):
+    def __init__(self, port: str="COM1", debug: bool=False):
         self.debug = debug
         self.port = port
         self.setup_cm110()
@@ -71,11 +72,11 @@ class mono(object):
             stopbits=serial.STOPBITS_ONE
         )
 
-    def send(self, item):
+    def send(self, item: int):
         self.cm.write(chr(item).encode())
-        sleep(0.01)
+        sleep(0.05)
 
-    def command(self, operation, *args):
+    def command(self, operation: str, *args):
         """
         ------------------------------------------------------------------------
         *args should contain one argument except when the operation is:
@@ -84,7 +85,6 @@ class mono(object):
         ------------------------------------------------------------------------
         """
 
-        self.cm.flush()
         commands = {"calibrate": 18, "dec": 1, "echo": 27, "goto": 16,
                     "inc": 7, "order": 51, "query": 56, "reset": 255,
                     "scan": 12, "select": 26, "size": 55, "speed": 13,
@@ -96,25 +96,25 @@ class mono(object):
         except:
             print("Invalid command")
 
-        self.send(c)
-
         if c in [51, 56, 26, 55, 50]:
+            self.send(c)
             self.send(x)
 
         elif c in [18, 16, 13]:
             high, low = divmod(x, 0x100)
-
+            self.send(c)
             self.send(high)
             self.send(low)
 
         elif c is 255:
-            for i in range(2):
+            for i in range(3):
                 self.send(255)
 
         elif c is 12:
             y = args[1]
             s_high, s_low = divmod(x, 0x100)
             e_high, e_low = divmod(y, 0x100)
+            self.send(c)
 
             self.send(s_high)
             self.send(s_low)
@@ -161,6 +161,7 @@ class mono(object):
             raw = []
             for j in range(self.cm.inWaiting()):
                 raw += self.cm.read()
+                sleep(0.1)
         status = raw[0]
         message = raw[1]
         stat_message = self.status(status)
@@ -170,7 +171,7 @@ class mono(object):
         except AssertionError:
             return -1
 
-    def status(self, status):
+    def status(self, status: int):
         """
         ------------------------------------------------------------------------
         Takes a status byte and constructs a list of status messages based on
@@ -190,15 +191,18 @@ class mono(object):
             ("Requires action", "Requires no action")
             [(status & 1 << 6) >> 6])
 
-        # Why was the command not accepted? Ignore if command accepted
-        stat_message.append(
-            ("Specifier was too large", "Specifier was too small")
-            [(status & 1 << 5) >> 5])
+        # Following messages only relevent if command failed
+        if "Command not accepted" in stat_message:
 
-        # Which way is the scan going?
-        stat_message.append(
-            ("Scan is positive going", "Scan is negative going")
-            [(status & 1 << 4) >> 4])
+            # Why was the command not accepted? Ignore if command accepted
+            stat_message.append(
+                ("Specifier was too large", "Specifier was too small")
+                [(status & 1 << 5) >> 5])
+
+            # Which way is the scan going?
+            stat_message.append(
+                ("Scan is positive going", "Scan is negative going")
+                [(status & 1 << 4) >> 4])
 
         # Which order is the scan?
         stat_message.append(
@@ -211,7 +215,7 @@ class mono(object):
 
         return stat_message
 
-    def calibrate(self, position):
+    def calibrate(self, position: int):
         """
         ------------------------------------------------------------------------
 
@@ -232,7 +236,11 @@ class mono(object):
         ------------------------------------------------------------------------
         """
         self.command("dec")
-        print(self.message_status())
+        stat_message = self.message_status()
+        if self.debug:
+            return stat_message
+        else:
+            return 0
 
     def echo(self):
         """
@@ -248,16 +256,18 @@ class mono(object):
         else:
             return("No response recieved")
 
-    def goto(self, wavelength):
+    def goto(self, wavelength: int):
         """
         ------------------------------------------------------------------------
 
         ------------------------------------------------------------------------
         """
         self.command("goto", wavelength)
-        sleep(0.1)
+        while self.cm.inWaiting() < 2:
+            sleep(0.1)
+        stat_message = self.message_status()
         if self.debug:
-            return self.message_status()
+            return stat_message
         else:
             return 0
 
@@ -268,16 +278,24 @@ class mono(object):
         ------------------------------------------------------------------------
         """
         self.command("inc")
-        print(self.message_status())
+        stat_message = self.message_status()
+        if self.debug:
+            return stat_message
+        else:
+            return 0
 
-    def order(self, order):
+    def order(self, order: int):
         """
         ------------------------------------------------------------------------
 
         ------------------------------------------------------------------------
         """
         self.command("order")
-        print(self.message_status())
+        stat_message = self.message_status()
+        if self.debug:
+            return stat_message
+        else:
+            return 0
 
     def query(self):
         """
@@ -285,6 +303,8 @@ class mono(object):
 
         ------------------------------------------------------------------------
         """
+        # self.cm.read(self.cm.inWaiting())
+        sleep(0.1)
         print("CURRENT CONGIGURATION")
         print("=====================")
         properties = ("Position:",
@@ -301,10 +321,9 @@ class mono(object):
         i = 0
         for q in q_bytes:
 
-            self.cm.write(chr(56).encode())
-            self.cm.write(chr(q).encode())
+            self.command("query", q)
             raw = []
-            sleep(0.01)
+            sleep(0.05)
             try:
                 for j in range(self.cm.inWaiting()):
                     raw += self.cm.read()
@@ -327,7 +346,7 @@ class mono(object):
         self.command("reset")
         print(self.message_status())
 
-    def scan(self, start, end):
+    def scan(self, start: int, end: int):
         """
         ------------------------------------------------------------------------
 
@@ -337,7 +356,7 @@ class mono(object):
         sleep(0.1)
         print(self.message_status())
 
-    def speed(self, speed):
+    def speed(self, speed: int):
         """
         ------------------------------------------------------------------------
 
@@ -347,7 +366,7 @@ class mono(object):
         sleep(0.01)
         print(self.message_status())
 
-    def step():
+    def step(self):
         pass
 
 
@@ -360,16 +379,13 @@ if __name__ == "__main__":
     3) Closes the port.
     ----------------------------------------------------------------------------
     """
+    cm = mono(port="COM1", debug=True)
 
-    cm = mono(port="COM1")
-    for i in range(3900, 7000, 100):
+    for i in range(3900, 7001, 100):
         cm.goto(i)
-        sleep(0.1)
-
-    sleep(2)
 
     for i in range(7000, 3900, -100):
         cm.goto(i)
-        sleep(0.1)
 
+    cm.query()
     cm.close()
